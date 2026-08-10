@@ -96,17 +96,37 @@ Host udev installation is still required for hardware access from Flatpak (`--de
 
 ## Applications & scripts (launcher daemon)
 
-The "Aplicações e Scripts" editor block binds a shell command to a key: the
+The "Applications and Scripts" editor block binds a shell command to a key: the
 key receives a marker chord (F13–F24 + modifiers) and `minikeyboard-daemon`
 watches the device's input nodes and launches the command when the marker
 fires. Bindings live in `~/.config/minikeyboard/bindings.json` and reload
 automatically.
 
-Enable the daemon once:
+The daemon may start before the graphical login. Each binding therefore runs as
+a transient `systemd --user` unit, inheriting the manager's current graphical
+environment (`DISPLAY`, `WAYLAND_DISPLAY`, and D-Bus) instead of the daemon's
+boot-time environment. Script exit status and stderr are recorded by
+`journalctl --user -u minikeyboard-daemon`.
 
-```bash
-systemctl --user enable --now minikeyboard-daemon
-```
+A real Meson install (`make install`, `DESTDIR` unset) fully enables autostart:
+
+- Meson installs an enablement symlink (`WantedBy=default.target`) so the unit
+  is enabled for the user manager;
+- `make install` then enables lingering for the target user and **restarts** the
+  daemon immediately, so it also comes up at boot without a login session and
+  a reinstall always replaces a running older binary.
+
+Under `sudo`, the target user is the invoking `SUDO_USER` (never root); a
+root shell must pass `TARGET_USER=<user>` explicitly. Override the account with
+`make install TARGET_USER=<user>`.
+
+A staged/packaging install (`DESTDIR=...`) deliberately installs only the
+enablement symlink and performs no linger/start — the packaged system decides
+those at first boot.
+
+A developer build without `make install` still needs the manual one-time
+`systemctl --user enable --now minikeyboard-daemon` (plus `loginctl
+enable-linger "$USER"` for boot without login).
 
 The daemon needs read access to `/dev/input/event*` (the `input` group).
 

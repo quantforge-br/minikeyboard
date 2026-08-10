@@ -1,10 +1,11 @@
 //! Background launcher: watches the Mini Keyboard's evdev nodes and runs the
 //! command bound to each marker chord (F13–F24 + modifiers) pressed.
 //!
-//! Bindings live in `bindings.json` (managed by the GUI's "Aplicações e
+//! Bindings live in `bindings.json` (managed by the GUI's "Applications and
 //! Scripts" editor) and are reloaded automatically when the file changes.
-//! Run as a systemd user service: `systemctl --user enable --now
-//! minikeyboard-daemon`.
+//! Installed builds enable this systemd user service automatically. Bindings
+//! execute as transient user units, inheriting the manager's live graphical
+//! session environment even when this daemon started at boot through linger.
 
 use std::fs::File;
 use std::io::Read;
@@ -61,22 +62,56 @@ impl Bindings {
 }
 
 fn run_command(binding: &AppBinding) {
-    // `… &` + wait(): sh backgrounds the job and exits at once, the child is
-    // reparented to init — no zombies accumulate in the daemon.
-    let spawned = Command::new("sh")
-        .arg("-c")
-        .arg(format!("{} &", binding.command))
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn();
-    match spawned {
-        Ok(mut child) => {
-            let _ = child.wait();
-            eprintln!("launched: {} ({})", binding.name, binding.command);
+    // The daemon may start at boot through lingering, before the graphical
+    // session exists, freezing its own environment without DISPLAY or
+    // WAYLAND_DISPLAY. A transient systemd --user unit inherits the manager's
+    // live session environment, which the compositor updates through
+    // `dbus-update-activation-environment --systemd`.
+    //
+    // Wait outside the event loop so we retain the script's real exit status
+    // and stderr, while systemd owns/reaps the actual script process.
+    let name = binding.name.clone();
+    let command = binding.command.clone();
+    std::thread::spawn(move || {
+        let result = Command::new("systemd-run")
+            .args([
+                "--user",
+                "--wait",
+                "--pipe",
+                "--collect",
+                "--quiet",
+                "--",
+                "sh",
+                "-c",
+            ])
+            .arg(&command)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::piped())
+            .spawn()
+            .and_then(|child| child.wait_with_output());
+        match result {
+            Ok(out) if out.status.success() => {
+                eprintln!("command succeeded: {name} ({command})");
+            }
+            Ok(out) => {
+                let status = out
+                    .status
+                    .code()
+                    .map(|code| code.to_string())
+                    .unwrap_or_else(|| "signal".to_owned());
+                eprintln!(
+                    "command failed: {name} ({command}) exit={status}: {}",
+                    String::from_utf8_lossy(&out.stderr).trim()
+                );
+            }
+            Err(e) => {
+                // Do not fall back to the daemon's stale environment: that
+                // would silently repeat the graphical-script failure.
+                eprintln!("failed to run {name} ({command}) via systemd: {e}");
+            }
         }
-        Err(e) => eprintln!("failed to launch {}: {e}", binding.name),
-    }
+    });
 }
 
 /// Read the device until it disappears (unplug) — then return to re-enumerate.
@@ -105,8 +140,7 @@ fn watch(files: &mut [File], bindings: &mut Bindings) {
                                 && bindings::is_marker(usage)
                             {
                                 bindings.refresh();
-                                if let Some(b) = bindings::find(&bindings.list, held, usage)
-                                {
+                                if let Some(b) = bindings::find(&bindings.list, held, usage) {
                                     run_command(b);
                                 }
                             }

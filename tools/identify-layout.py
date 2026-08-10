@@ -34,17 +34,17 @@ MSC_SCAN = 0x04
 
 # Physical prompt order: two knobs on top, then 12 keys in 4 rows x 3 cols.
 PROMPTS = [
-    ("E1 girar-esq", "Gire o KNOB ESQUERDO (E1) para a ESQUERDA"),
-    ("E1 clique", "PRESSIONE (clique) o KNOB ESQUERDO (E1)"),
-    ("E1 girar-dir", "Gire o KNOB ESQUERDO (E1) para a DIREITA"),
-    ("E2 girar-esq", "Gire o KNOB DIREITO (E2) para a ESQUERDA"),
-    ("E2 clique", "PRESSIONE (clique) o KNOB DIREITO (E2)"),
-    ("E2 girar-dir", "Gire o KNOB DIREITO (E2) para a DIREITA"),
+    ("E1 turn-left", "Turn the LEFT KNOB (E1) to the LEFT"),
+    ("E1 click", "PRESS (click) the LEFT KNOB (E1)"),
+    ("E1 turn-right", "Turn the LEFT KNOB (E1) to the RIGHT"),
+    ("E2 turn-left", "Turn the RIGHT KNOB (E2) to the LEFT"),
+    ("E2 click", "PRESS (click) the RIGHT KNOB (E2)"),
+    ("E2 turn-right", "Turn the RIGHT KNOB (E2) to the RIGHT"),
 ] + [
     (
-        f"K{i + 1} (linha {i // 3 + 1}, coluna {i % 3 + 1})",
-        f"Pressione a tecla física LINHA {i // 3 + 1}, COLUNA {i % 3 + 1} "
-        f"(contando do topo, esquerda para direita)",
+        f"K{i + 1} (row {i // 3 + 1}, column {i % 3 + 1})",
+        f"Press the physical key ROW {i // 3 + 1}, COLUMN {i % 3 + 1} "
+        f"(counting from the top, left to right)",
     )
     for i in range(12)
 ]
@@ -99,7 +99,7 @@ def run_dump_config():
         print(f"  aviso: dump-config falhou ({e}); seguindo sem ele.")
         return None
     if out.returncode != 0:
-        print(f"  aviso: dump-config retornou erro:\n{out.stderr.strip()}")
+        print(f"  warning: dump-config returned an error:\n{out.stderr.strip()}")
         return None
     layers, current = {}, None
     for line in out.stdout.splitlines():
@@ -196,28 +196,28 @@ class Capture:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--skip-dump", action="store_true",
-                    help="não executar dump-config antes da captura")
+                    help="do not run dump-config before capture")
     ap.add_argument("-o", "--output", default="tools/physical-order-result.json")
     args = ap.parse_args()
 
     dump = None
     if not args.skip_dump:
-        print("Lendo configuração atual do dispositivo (dump-config)...")
+        print("Reading current device configuration (dump-config)...")
         dump = run_dump_config()
         if dump:
-            print(f"  ok: {len(dump)} layer(s) lidas.")
+            print(f"  ok: {len(dump)} layer(s) read.")
 
     nodes = find_event_nodes()
     if not nodes:
-        sys.exit(f"Nenhum /dev/input/event* para {VID}:{PID}. Teclado conectado?")
+        sys.exit(f"No /dev/input/event* for {VID}:{PID}. Keyboard connected?")
     try:
         cap = Capture(nodes)
     except PermissionError:
-        sys.exit("Sem acesso a /dev/input. Rode com sudo ou entre no grupo 'input'.")
+        sys.exit("No access to /dev/input. Run with sudo or join the 'input' group.")
 
-    print(f"\nNós capturados (grab exclusivo): {', '.join(nodes)}")
-    print("As teclas NÃO digitarão no terminal durante a captura.")
-    print("Enter = pular posição | Ctrl+C = abortar\n")
+    print(f"\nNodes captured (exclusive grab): {', '.join(nodes)}")
+    print("Keys will NOT type into the terminal during capture.")
+    print("Enter = skip position | Ctrl+C = abort\n")
 
     results = []
     try:
@@ -226,18 +226,18 @@ def main():
             print(f">>> {label}: {prompt}")
             ev = cap.next_event()
             if ev == "skip":
-                print("    (pulada)\n")
+                print("    (skipped)\n")
                 results.append({"physical": label, "event": None})
                 continue
             if ev is None:
-                print("    (timeout — posição pulada)\n")
+                print("    (timeout — position skipped)\n")
                 results.append({"physical": label, "event": None})
                 continue
             desc = ev["name"] + (f" ({ev['value']:+d})" if ev["type"] == "rel" else "")
-            print(f"    capturado: {desc}  [{ev['node']}]\n")
+            print(f"    captured: {desc}  [{ev['node']}]\n")
             results.append({"physical": label, "event": ev})
     except KeyboardInterrupt:
-        print("\nAbortado; salvando parcial.")
+        print("\nAborted; saving partial results.")
     finally:
         cap.close()
 
@@ -245,15 +245,15 @@ def main():
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
 
-    print("\n=== Resumo (posição física -> evento) ===")
+    print("\n=== Summary (physical position -> event) ===")
     for r in results:
         ev = r["event"]
         print(f"  {r['physical']:<28} {ev['name'] if ev else '—'}")
     if dump and 1 in dump:
-        print("\n=== dump-config layer 1 (wire -> ação) ===")
+        print("\n=== dump-config layer 1 (wire -> action) ===")
         for pos, action in sorted(dump[1].items()):
             print(f"  wire {pos:2}  {action}")
-    print(f"\nResultado salvo em {args.output} — envie esse arquivo para mapear a geometria.")
+    print(f"\nResult saved to {args.output} — send this file to map the geometry.")
 
 
 if __name__ == "__main__":

@@ -1,94 +1,94 @@
-# Especificação — Mini Keyboard Programmer nativo para Linux
+# Specification — Native Linux Mini Keyboard Programmer
 
-Status: proposta de implementação clean-room baseada em comportamento observável, artefatos distribuídos pelo fabricante e descritores USB/HID do hardware adquirido.
+Status: clean-room implementation proposal based on observable behavior, artifacts distributed by the manufacturer, and USB/HID descriptors of the purchased hardware.
 
-## 1. Objetivo
+## 1. Objective
 
-Criar uma aplicação Linux nativa para configurar os macro keyboards USB atualmente atendidos pelo aplicativo `MINI_KEYBOARD.exe`, sem Wine, sem empacotar binários Windows e sem reutilizar código do fabricante.
+Create a native Linux application to configure the USB macro keyboards currently served by the `MINI_KEYBOARD.exe` application, without Wine, without packaging Windows binaries, and without reusing manufacturer code.
 
-A aplicação deve:
+The application must:
 
-- descobrir o dispositivo por USB VID/PID e selecionar somente sua interface de configuração;
-- identificar automaticamente a geometria do teclado;
-- ler a configuração armazenada no dispositivo;
-- editar teclas, macros, multimídia, mouse, atraso, camadas e LED/RGB;
-- gravar somente as posições modificadas;
-- verificar a gravação por releitura;
-- importar e exportar perfis locais;
-- funcionar sem `root`, com uma regra udev restrita ao dispositivo.
+- discover the device by USB VID/PID and select only its configuration interface;
+- automatically identify the keyboard geometry;
+- read the configuration stored on the device;
+- edit keys, macros, multimedia, mouse, delay, layers, and LED/RGB;
+- write only the modified positions;
+- verify the write by re-reading;
+- import and export local profiles;
+- work without `root`, using a udev rule restricted to the device.
 
-## 2. Contrato clean-room
+## 2. Clean-room contract
 
-### 2.1 Fontes permitidas
+### 2.1 Permitted sources
 
-- descritores USB e HID expostos pelo próprio dispositivo;
-- tráfego USB/HID produzido ao operar legalmente o hardware e o aplicativo original;
-- nomes, textos e comportamento visível da interface;
-- documentação pública de USB HID, hidapi, Linux hidraw, GTK e Rust;
-- este documento de especificação comportamental.
+- USB and HID descriptors exposed by the device itself;
+- USB/HID traffic produced by legally operating the hardware and the original application;
+- names, text, and visible behavior of the interface;
+- public documentation of USB HID, hidapi, Linux hidraw, GTK, and Rust;
+- this behavioral specification document.
 
-### 2.2 Restrições
+### 2.2 Restrictions
 
-A implementação não deve:
+The implementation must not:
 
-- copiar ou traduzir código decompilado do aplicativo original;
-- incorporar `MINI_KEYBOARD.exe`, DLLs, objetos COFF ou o AppImage atual;
-- reproduzir imagens, identidade visual ou recursos gráficos do fabricante;
-- depender de Wine;
-- liberar acesso global a todos os dispositivos `/dev/hidraw*`;
-- habilitar escrita em dispositivos desconhecidos apenas porque usam HID.
+- copy or translate decompiled code from the original application;
+- embed `MINI_KEYBOARD.exe`, DLLs, COFF objects, or the current AppImage;
+- reproduce images, visual identity, or graphical assets from the manufacturer;
+- depend on Wine;
+- grant global access to all `/dev/hidraw*` devices;
+- enable writing to unknown devices simply because they use HID.
 
-### 2.3 Separação recomendada
+### 2.3 Recommended separation
 
-1. **Equipe de protocolo:** coleta capturas, produz vetores de teste e atualiza somente esta especificação.
-2. **Equipe de implementação:** recebe a especificação e os vetores, mas não consulta decompilação ou código do fabricante.
-3. **Revisão:** confirma que cada implementação pode ser explicada por uma exigência desta especificação ou por documentação pública.
+1. **Protocol team:** collects captures, produces test vectors, and updates only this specification.
+2. **Implementation team:** receives the specification and the vectors, but does not consult decompilation or manufacturer code.
+3. **Review:** confirms that each implementation can be explained by a requirement of this specification or by public documentation.
 
-## 3. Evidência observada
+## 3. Observed evidence
 
-### 3.1 Aplicativo distribuído
+### 3.1 Distributed application
 
-- Aplicativo principal: PE32/i386, Qt 5.14.2 e MinGW.
-- Transporte: hidapi.
-- O `MiniKeyboard-x86_64.AppImage` existente não é uma aplicação Linux nativa. Seu SquashFS contém o executável Windows, DLLs Qt para Windows, `hidapi.dll` e os mesmos objetos do pacote Windows.
-- O aplicativo consulta conexão a cada aproximadamente 100 ms.
+- Main application: PE32/i386, Qt 5.14.2, and MinGW.
+- Transport: hidapi.
+- The existing `MiniKeyboard-x86_64.AppImage` is not a native Linux application. Its SquashFS contains the Windows executable, Qt DLLs for Windows, `hidapi.dll`, and the same objects from the Windows package.
+- The application polls the connection approximately every 100 ms.
 
-### 3.2 Hardware confirmado
+### 3.2 Confirmed hardware
 
-Dispositivo conectado durante a análise:
+Device connected during the analysis:
 
-| Campo | Valor |
+| Field | Value |
 |---|---|
 | VID | `0x1189` |
 | PID | `0x8842` |
-| Produto USB | `USB Composite Device` |
-| Serial observado | `CD70134330393835` |
+| USB Product | `USB Composite Device` |
+| Observed serial | `CD70134330393835` |
 | USB | 1.10, Full Speed |
 
-O dispositivo possui duas interfaces HID:
+The device has two HID interfaces:
 
-| Interface | Finalidade | Endpoints |
+| Interface | Purpose | Endpoints |
 |---|---|---|
-| 0 | Configuração proprietária | OUT `0x04`, IN `0x84`, 64 bytes |
-| 1 | Teclado, mouse e consumer control | IN `0x82`, 16 bytes |
+| 0 | Proprietary configuration | OUT `0x04`, IN `0x84`, 64 bytes |
+| 1 | Keyboard, mouse, and consumer control | IN `0x82`, 16 bytes |
 
-A interface 0 usa:
+Interface 0 uses:
 
 - Usage Page `0xFF00`;
 - Report ID `0x03`;
-- Input de 64 bytes;
-- Output de 64 bytes.
+- 64-byte input;
+- 64-byte output.
 
-A aplicação deve abrir a interface **0**, nunca a interface de teclado 1.
+The application must open interface **0**, never keyboard interface 1.
 
-### 3.3 IDs pesquisados pelo software original
+### 3.3 IDs queried by the original software
 
-VIDs observados:
+Observed VIDs:
 
 - `0x1189`;
 - `0x514C`.
 
-PIDs observados:
+Observed PIDs:
 
 - `0x8842`;
 - `0x8840`;
@@ -99,165 +99,164 @@ PIDs observados:
 - `0x8850`;
 - `0x8851`.
 
-Somente `0x1189:0x8842` foi validado fisicamente nesta análise. Os demais devem permanecer como `experimental` até validação em hardware.
+Only `0x1189:0x8842` was physically validated in this analysis. The remaining ones must stay marked as `experimental` until validated on hardware.
 
-## 4. Modelo funcional
+## 4. Functional model
 
-### 4.1 Variantes reconhecidas
+### 4.1 Recognized variants
 
-A resposta de identificação contém uma tupla de três bytes interpretada como quantidade de teclas, quantidade/variante de controles adicionais e subtipo. Foram observadas rotas de UI para:
+The identification response contains a three-byte tuple interpreted as key count, additional control count/variant, and subtype. UI routes have been observed for:
 
 - `0+1`, `0+2`, `0+3`;
 - `1+0`, `2+0`;
 - `3+0`, `3+1`;
 - `4+0`, `4+1`, `4+2`, `4+3`;
-- `5+0` com mute;
+- `5+0` with mute;
 - `6+0`, `6+1`, `6+2`;
 - `9+2`, `9+3`;
 - `11+3`;
 - `12+2`, `12+3`, `12+4`;
-- `15+3` como fallback;
+- `15+3` as fallback;
 - `16+0`;
 - `21+1`.
 
-A geometria deve ser descrita por dados, não por telas ou classes específicas para cada modelo.
+Geometry must be described by data, not by screens or classes specific to each model.
 
-### 4.2 Camadas e posições
+### 4.2 Layers and positions
 
-- 3 camadas configuráveis.
-- Até 60 posições lógicas por camada.
-- Cada posição ocupa um registro de 50 bytes no protocolo observado.
-- O layout físico pode expor menos posições que o limite do protocolo.
-- Cada posição possui dirty flag independente.
+- 3 configurable layers.
+- Up to 60 logical positions per layer.
+- Each position occupies a 50-byte record in the observed protocol.
+- The physical layout may expose fewer positions than the protocol limit.
+- Each position has an independent dirty flag.
 
-### 4.3 Tipos de ação obrigatórios
+### 4.3 Required action types
 
-1. **Tecla básica:** qualquer usage de teclado suportado pelo firmware.
-2. **Combinação:** modificadores Ctrl, Shift, Alt e GUI/Win combinados com uma tecla.
-3. **Macro/sequência:** múltiplos eventos ou pares modificador/tecla dentro do limite do registro.
-4. **Multimídia:**
+1. **Basic key:** any keyboard usage supported by the firmware.
+2. **Combination:** Ctrl, Shift, Alt, and GUI/Win modifiers combined with a key.
+3. **Macro/sequence:** multiple events or modifier/key pairs within the record limit.
+4. **Multimedia:**
    - play/pause;
    - stop;
-   - faixa anterior;
-   - próxima faixa;
+   - previous track;
+   - next track;
    - mute;
    - volume +;
    - volume -;
-   - calculadora.
+   - calculator.
 5. **Mouse:**
-   - botão esquerdo;
-   - botão central;
-   - botão direito;
-   - roda + e -;
-   - roda com Ctrl, Shift ou Alt.
-6. **LED/RGB:** 6 modos observados e pelo menos 8 seleções de cor.
-7. **Atraso:** valor associado à ação, representado por dois bytes no registro.
-8. **Camada:** selecionar e editar as camadas 1, 2 e 3.
-9. **Limpeza:** limpar uma posição ou todas as posições da camada corrente.
+   - left button;
+   - middle button;
+   - right button;
+   - wheel + and -;
+   - wheel with Ctrl, Shift, or Alt.
+6. **LED/RGB:** 6 observed modes and at least 8 color selections.
+7. **Delay:** value associated with the action, represented by two bytes in the record.
+8. **Layer:** select and edit layers 1, 2, and 3.
+9. **Clear:** clear a single position or all positions in the current layer.
 
-## 5. Protocolo HID
+## 5. HID protocol
 
-### 5.1 Transporte
+### 5.1 Transport
 
-- Backend Linux: hidapi/hidraw.
-- Seleção: VID/PID permitido, Usage Page `0xFF00`, Report ID `0x03` e `interface_number == 0` quando disponível.
-- Uma sessão por dispositivo.
-- Toda escrita deve ser serializada.
-- O worker de I/O deve possuir timeout e cancelamento por desconexão.
+- Linux backend: hidapi/hidraw.
+- Selection: allowed VID/PID, Usage Page `0xFF00`, Report ID `0x03`, and `interface_number == 0` when available.
+- One session per device.
+- Every write must be serialized.
+- The I/O worker must have a timeout and cancellation on disconnection.
 
-O software original escreve buffers de 65 bytes: 1 byte de Report ID mais 64 bytes de relatório. Ele solicita leituras de 64 bytes. Essa assimetria deve ser preservada inicialmente e registrada como uma questão de compatibilidade a confirmar em captura USB.
+The original software writes 65-byte buffers: 1 Report ID byte plus 64 bytes of report. It requests 64-byte reads. This asymmetry must be preserved initially and logged as a compatibility issue to be confirmed via USB capture.
 
-### 5.2 Consulta de identificação
+### 5.2 Identification query
 
-Transmissão observada:
+Observed transmission:
 
 ```text
 03 FB FB FB 00 ... 00
 ```
 
-- tamanho passado a hidapi: 65 bytes;
-- leitura: até 64 bytes;
-- timeout observado: 10 ms;
-- os bytes de resposta nos índices 2, 3 e 4 determinam a variante física.
+- size passed to hidapi: 65 bytes;
+- read: up to 64 bytes;
+- observed timeout: 10 ms;
+- response bytes at indices 2, 3, and 4 determine the physical variant.
+Requirements:
 
-Requisitos:
+- only accept a response with sufficient size for the indices used;
+- reject an empty, truncated response, or one from a different Report ID;
+- do not assume geometry when the tuple is unknown;
+- for an unknown tuple, open in diagnostic/read-only mode.
 
-- aceitar somente resposta com tamanho suficiente para os índices usados;
-- rejeitar resposta vazia, truncada ou de outro Report ID;
-- não assumir geometria quando a tupla for desconhecida;
-- para tupla desconhecida, abrir em modo diagnóstico/read-only.
+### 5.3 Configuration Reading
 
-### 5.3 Leitura de configuração
-
-Cabeçalho observado:
+Observed header:
 
 ```text
 03 FA <layer-or-count> <range> <block-index> 00 ... 00
 ```
 
-Comportamento observado:
+Observed behavior:
 
-- a operação percorre as 3 camadas;
-- cada comando é seguido por uma sequência de leituras HID;
-- 49 bytes úteis de cada resposta são copiados para a área de registros;
-- a UI original chama a leitura com parâmetros equivalentes a `(3, 15, 3)`.
+- the operation iterates over the 3 layers;
+- each command is followed by a sequence of HID reads;
+- 49 useful bytes from each response are copied to the register area;
+- the original UI calls the read with parameters equivalent to `(3, 15, 3)`.
 
-A semântica exata dos bytes 2–4 ainda precisa ser fechada com captura USB. A implementação inicial deve encapsular esse comando em `ReadConfigCommand`, sem espalhar offsets pela aplicação.
+The exact semantics of bytes 2–4 still need to be finalized with a USB capture. The initial implementation must encapsulate this command in `ReadConfigCommand`, without spreading offsets throughout the application.
 
-### 5.4 Gravação de posição
+### 5.4 Position Writing
 
-Para cada posição dirty:
+For each dirty position:
 
 ```text
 byte 0      = 0x03              # Report ID
-bytes 1–50  = registro da posição
+bytes 1–50  = position record
 bytes 51–64 = 0x00
 ```
 
-- tamanho total: 65 bytes;
-- posições limpas não devem ser enviadas;
-- a ordem deve ser camada crescente e posição crescente;
-- qualquer erro interrompe a transação antes do commit.
+- total size: 65 bytes;
+- clean positions must not be sent;
+- the order must be ascending layer and ascending position;
+- any error interrupts the transaction before commit.
 
-### 5.5 Commit/finalização
+### 5.5 Commit/Finalization
 
-Após o último conjunto de posições:
+After the last set of positions:
 
 ```text
 03 FD FE FF 00 ... 00
 ```
 
-- tamanho total: 65 bytes;
-- espera observada após o commit: 200 ms;
-- depois do commit, a aplicação deve reler e comparar a configuração.
+- total size: 65 bytes;
+- observed wait after the commit: 200 ms;
+- after the commit, the application must re-read and compare the configuration.
 
-Não repetir automaticamente o commit após timeout: o firmware pode ter aplicado a transação apesar da ausência de confirmação.
+Do not automatically retry the commit after a timeout: the firmware may have applied the transaction despite the lack of confirmation.
 
-### 5.6 Estrutura parcial do registro de 50 bytes
+### 5.6 Partial Structure of the 50-byte Record
 
-Offsets abaixo são observados; campos não confirmados permanecem opacos.
+The offsets below are observed; unconfirmed fields remain opaque.
 
-| Offset | Tamanho | Interpretação |
+| Offset | Size | Interpretation |
 |---:|---:|---|
-| 0 | 1 | marcador/comando; RGB usa `0xFE` |
-| 1 | 1 | subtipo; RGB usa `0xB0` |
-| 2 | 1 | camada baseada em 1 no comando RGB |
-| 3 | 1 | modo/tipo principal da ação |
-| 4–5 | 2 | atraso, ordem little-endian a confirmar |
-| 9 | 1 | contador/comprimento da ação |
-| 10–49 | 40 | dados da ação, pares e campos específicos |
+| 0 | 1 | marker/command; RGB uses `0xFE` |
+| 1 | 1 | subtype; RGB uses `0xB0` |
+| 2 | 1 | 1-based layer in the RGB command |
+| 3 | 1 | main mode/type of the action |
+| 4–5 | 2 | delay, byte order little-endian, to be confirmed |
+| 9 | 1 | counter/length of the action |
+| 10–49 | 40 | action data, pairs and specific fields |
 
-RGB observado:
+Observed RGB:
 
 - byte 0: `0xFE`;
 - byte 1: `0xB0`;
-- byte 2: camada + 1;
+- byte 2: layer + 1;
 - byte 9: `1`;
-- byte 11: modo e cor compactados em nibbles.
+- byte 11: mode and color packed into nibbles.
 
-Os demais bytes devem ser preservados quando uma configuração é lida e parcialmente editada. O encoder não pode zerar campos desconhecidos sem uma ação explícita de reset.
+The remaining bytes must be preserved when a configuration is read and partially edited. The encoder must not zero out unknown fields without an explicit reset action.
 
-## 6. Modelo de domínio
+## 6. Domain Model
 
 ```rust
 struct DeviceIdentity {
@@ -308,29 +307,29 @@ enum Action {
 }
 ```
 
-Regras:
+Rules:
 
-- `raw_record` é a fonte para round-trip lossless.
-- `Action` é a visão semântica dos campos conhecidos.
-- `Opaque` mantém configurações ainda não compreendidas.
-- editar um campo conhecido deve alterar somente os bytes correspondentes.
-- perfis salvos devem incluir VID, PID, tupla de variante e versão do schema.
+- `raw_record` is the source for lossless round-tripping.
+- `Action` is the semantic view of the known fields.
+- `Opaque` retains configurations that are not yet understood.
+- editing a known field must only change the corresponding bytes.
+- saved profiles must include VID, PID, variant tuple, and schema version.
 
-## 7. Arquitetura Linux
+## 7. Linux Architecture
 
-### 7.1 Stack escolhida
+### 7.1 Chosen Stack
 
-- Linguagem: Rust estável, edition 2024.
+- Language: stable Rust, edition 2024.
 - UI: GTK 4 + libadwaita.
-- HID: crate `hidapi`, backend hidraw.
-- Hotplug: udev/libudev ou refresh periódico do hidapi, isolado no módulo de transporte.
-- Persistência: Serde JSON, escrita atômica.
-- Logs: `tracing`, sem incluir conteúdo de macros por padrão.
-- Empacotamento inicial: Flatpak e pacote nativo; AppImage pode ser adicional, mas não o único formato.
+- HID: `hidapi` crate, hidraw backend.
+- Hotplug: udev/libudev or periodic hidapi refresh, isolated in the transport module.
+- Persistence: Serde JSON, atomic write.
+- Logs: `tracing`, without including macro content by default.
+- Initial packaging: Flatpak and native package; AppImage may be additional, but not the only format.
 
-### 7.2 Processo
+### 7.2 Process
 
-Um único processo, sem daemon privilegiado:
+A single process, without a privileged daemon:
 
 ```text
 GTK/libadwaita UI
@@ -347,9 +346,9 @@ Application Controller
                  └── hidapi/hidraw
 ```
 
-A thread GTK nunca deve executar I/O HID. O worker recebe comandos por canal e devolve eventos tipados.
+The GTK thread must never perform HID I/O. The worker receives commands via a channel and returns typed events.
 
-### 7.3 Módulos
+### 7.3 Modules
 
 ```text
 src/
@@ -379,9 +378,9 @@ src/
     status.rs
 ```
 
-Começar com um único crate. Separar crates somente se o protocolo passar a ser consumido por CLI ou outra aplicação.
+Start with a single crate. Split into separate crates only if the protocol starts to be consumed by a CLI or another application.
 
-### 7.4 Estados da sessão
+### 7.4 Session States
 
 ```text
 Disconnected
@@ -393,191 +392,190 @@ Disconnected
   -> ErrorRecoverable | Disconnected
 ```
 
-Invariantes:
+Invariants:
 
-- somente `ReadyDirty` permite gravar;
-- `Writing` bloqueia edição e nova leitura;
-- desconexão invalida o handle imediatamente;
-- reconexão com outro serial não reutiliza estado dirty;
-- dispositivo desconhecido nunca entra em `ReadyDirty` por padrão.
+- only `ReadyDirty` allows writing;
+- `Writing` blocks editing and new reads;
+- disconnection immediately invalidates the handle;
+- reconnection with a different serial does not reuse the dirty state;
+- an unknown device never enters `ReadyDirty` by default.
 
-## 8. Interface do usuário
+## 8. User Interface
 
-### 8.1 Tela principal
+### 8.1 Main Screen
 
-- seletor de dispositivo com VID:PID, serial e estado;
-- desenho data-driven da geometria;
-- abas ou segmented control para três camadas;
-- indicação visual de posições modificadas;
-- editor lateral de ação;
-- ações `Ler do dispositivo`, `Gravar`, `Reverter alterações`, `Limpar tecla`, `Limpar camada`;
-- status persistente da última operação e erro acionável.
+- device selector with VID:PID, serial, and status;
+- data-driven geometry drawing;
+- tabs or segmented control for the three layers;
+- visual indication of modified positions;
+- side action editor;
+- actions: `Read from device`, `Write`, `Revert changes`, `Clear key`, `Clear layer`;
+- persistent status of the last operation and actionable error.
+### 8.2 Action editor
 
-### 8.2 Editor de ação
+Categories:
 
-Categorias:
-
-- teclado;
-- combinação/macro;
-- multimídia;
+- keyboard;
+- combination/macro;
+- multimedia;
 - mouse;
-- iluminação;
-- atraso.
+- lighting;
+- delay.
 
-A UI deve mostrar o limite real do firmware antes de aceitar uma sequência. Campos não suportados pela variante ficam desabilitados, não ocultamente descartados.
+The UI must show the firmware's real limit before accepting a sequence. Fields not supported by the variant remain disabled, not silently discarded.
 
-### 8.3 Perfis
+### 8.3 Profiles
 
-- exportar JSON sem dados privados além do serial opcional;
-- importar com validação de schema e variante;
-- permitir importar perfil de outra unidade da mesma variante após aviso;
-- nunca gravar automaticamente após importar;
-- manter backup automático da última leitura confirmada.
+- export JSON without private data beyond the optional serial number;
+- import with schema and variant validation;
+- allow importing a profile from another unit of the same variant after a warning;
+- never write automatically after importing;
+- keep an automatic backup of the last confirmed reading.
 
-## 9. Requisitos funcionais
+## 9. Functional requirements
 
-| ID | Requisito |
+| ID | Requirement |
 |---|---|
-| FR-001 | Descobrir somente dispositivos da allowlist e selecionar interface 0. |
-| FR-002 | Exibir conexão/desconexão sem bloquear a UI. |
-| FR-003 | Consultar e mapear a tupla de variante. |
-| FR-004 | Ler as três camadas e preservar bytes desconhecidos. |
-| FR-005 | Editar todos os tipos de ação da seção 4.3. |
-| FR-006 | Marcar dirty por posição e gravar somente registros alterados. |
-| FR-007 | Enviar commit uma única vez por transação. |
-| FR-008 | Reler e verificar após gravação. |
-| FR-009 | Exportar/importar perfis versionados. |
-| FR-010 | Operar sem root por udev/uaccess. |
-| FR-011 | Oferecer modo diagnóstico read-only para variante desconhecida. |
-| FR-012 | Produzir relatório de diagnóstico sem conteúdo sensível das macros. |
+| FR-001 | Discover only devices from the allowlist and select interface 0. |
+| FR-002 | Display connection/disconnection without blocking the UI. |
+| FR-003 | Query and map the variant tuple. |
+| FR-004 | Read the three layers and preserve unknown bytes. |
+| FR-005 | Edit all action types from section 4.3. |
+| FR-006 | Mark dirty by position and write only changed records. |
+| FR-007 | Send commit exactly once per transaction. |
+| FR-008 | Re-read and verify after writing. |
+| FR-009 | Export/import versioned profiles. |
+| FR-010 | Operate without root via udev/uaccess. |
+| FR-011 | Offer a read-only diagnostic mode for an unknown variant. |
+| FR-012 | Produce a diagnostic report without sensitive macro content. |
 
-## 10. Requisitos não funcionais
+## 10. Non-functional requirements
 
-| ID | Requisito |
+| ID | Requirement |
 |---|---|
-| NFR-001 | Nenhum binário Windows ou Wine no artefato final. |
-| NFR-002 | Inicialização sem dispositivo em menos de 2 s em máquina comum. |
-| NFR-003 | UI responsiva durante leitura, gravação e hotplug. |
-| NFR-004 | Nenhuma escrita sem ação explícita do usuário. |
-| NFR-005 | Escrita de perfil local atômica e recuperável. |
-| NFR-006 | Logs sem sequências de teclas por padrão. |
-| NFR-007 | Código de protocolo coberto por vetores binários determinísticos. |
-| NFR-008 | Compatível com Wayland e X11 via GTK. |
-| NFR-009 | Suporte inicial a x86_64 e aarch64. |
-| NFR-010 | Regra udev limitada a VID/PID conhecidos e `TAG+="uaccess"`. |
+| NFR-001 | No Windows binary or Wine in the final artifact. |
+| NFR-002 | Startup without a device in under 2s on a common machine. |
+| NFR-003 | Responsive UI during reading, writing, and hotplug. |
+| NFR-004 | No writing without explicit user action. |
+| NFR-005 | Atomic and recoverable local profile writing. |
+| NFR-006 | Logs without key sequences by default. |
+| NFR-007 | Protocol code covered by deterministic binary vectors. |
+| NFR-008 | Compatible with Wayland and X11 via GTK. |
+| NFR-009 | Initial support for x86_64 and aarch64. |
+| NFR-010 | udev rule limited to known VID/PID and `TAG+="uaccess"`. |
 
-## 11. Permissões udev
+## 11. udev permissions
 
-A regra atual `MODE="0666"` para todo `hidraw*` é insegura e deve ser removida do produto.
+The current `MODE="0666"` rule for every `hidraw*` is insecure and must be removed from the product.
 
-Regra proposta para o dispositivo validado:
+Proposed rule for the validated device:
 
 ```udev
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1189", ATTRS{idProduct}=="8842", TAG+="uaccess"
 ```
 
-PIDs adicionais somente devem ser acrescentados após validação. Distribuições sem logind/uaccess podem documentar um grupo dedicado como fallback; não usar `0666`.
+Additional PIDs should only be added after validation. Distributions without logind/uaccess may document a dedicated group as a fallback; do not use `0666`.
 
-## 12. Tratamento de erros
+## 12. Error handling
 
-- **Permissão negada:** indicar a regra udev exata e como recarregá-la.
-- **Dispositivo ocupado:** mostrar processo provável quando detectável; não tentar detach da interface de teclado.
-- **Resposta truncada:** cancelar operação e preservar estado anterior.
-- **Desconexão durante leitura:** descartar leitura incompleta.
-- **Desconexão durante escrita:** marcar resultado como indeterminado e exigir releitura após reconexão.
-- **Timeout depois do commit:** não repetir commit; exigir verificação.
-- **Tupla desconhecida:** read-only e exportação de diagnóstico.
-- **Perfil incompatível:** bloquear gravação até conversão explícita.
+- **Permission denied:** indicate the exact udev rule and how to reload it.
+- **Device busy:** show the likely process when detectable; do not attempt to detach the keyboard interface.
+- **Truncated response:** cancel the operation and preserve the previous state.
+- **Disconnection during read:** discard the incomplete read.
+- **Disconnection during write:** mark the result as indeterminate and require a re-read after reconnection.
+- **Timeout after commit:** do not retry the commit; require verification.
+- **Unknown tuple:** read-only and diagnostic export.
+- **Incompatible profile:** block writing until explicit conversion.
 
-## 13. Plano de validação com hardware
+## 13. Hardware validation plan
 
-### Fase A — passiva, sem escrita
+### Phase A — passive, no writing
 
-1. Confirmar VID/PID, serial, interfaces, endpoints e descritores.
-2. Confirmar que discovery seleciona apenas a interface vendor-defined.
-3. Testar conexão, desconexão e reconexão repetidas.
-4. Comparar descritor lido pelo backend hidapi com sysfs.
+1. Confirm VID/PID, serial, interfaces, endpoints, and descriptors.
+2. Confirm that discovery selects only the vendor-defined interface.
+3. Test repeated connection, disconnection, and reconnection.
+4. Compare the descriptor read by the hidapi backend with sysfs.
 
-Critério: nenhuma alteração no comportamento das teclas.
+Criterion: no change in key behavior.
 
-### Fase B — comandos read-only
+### Phase B — read-only commands
 
-1. Capturar a consulta `03 FB FB FB` por usbmon/Wireshark.
-2. Registrar a resposta completa e a tupla de variante.
-3. Capturar `Read Configuration` no aplicativo original com USBPcap ou ambiente controlado.
-4. Determinar exatamente os campos layer/range/block.
-5. Ler a configuração com a implementação Linux e comparar byte a byte.
+1. Capture the `03 FB FB FB` query via usbmon/Wireshark.
+2. Record the full response and the variant tuple.
+3. Capture `Read Configuration` in the original application with USBPcap or a controlled environment.
+4. Determine exactly the layer/range/block fields.
+5. Read the configuration with the Linux implementation and compare byte by byte.
 
-Critério: três leituras consecutivas idênticas com o dispositivo ocioso.
+Criterion: three consecutive identical reads with the device idle.
 
-### Fase C — escrita mínima e reversível
+### Phase C — minimal, reversible write
 
-1. Salvar snapshot binário completo.
-2. Escolher uma tecla não crítica em uma camada não ativa.
-3. Alterar para uma tecla básica simples.
-4. Gravar um único registro e commit.
-5. Reler e confirmar somente o registro esperado.
-6. Testar fisicamente a tecla.
-7. Restaurar o snapshot e verificar novamente.
+1. Save a complete binary snapshot.
+2. Choose a non-critical key on an inactive layer.
+3. Change it to a basic simple key.
+4. Write a single record and commit.
+5. Re-read and confirm only the expected record.
+6. Physically test the key.
+7. Restore the snapshot and verify again.
 
-Critério: round-trip sem alteração colateral.
+Criterion: round-trip with no side effects.
 
-### Fase D — matriz de ações
+### Phase D — action matrix
 
-Cobrir pelo menos um caso de:
+Cover at least one case of:
 
-- tecla simples;
-- cada modificador;
-- combinação com múltiplos modificadores;
-- sequência no limite e acima do limite;
-- atraso mínimo, típico e máximo;
-- cada ação multimídia;
-- cada ação de mouse;
-- cada modo e cor RGB;
-- três camadas;
-- limpeza de tecla e camada.
+- simple key;
+- each modifier;
+- combination with multiple modifiers;
+- sequence at the limit and above the limit;
+- minimum, typical, and maximum delay;
+- each multimedia action;
+- each mouse action;
+- each RGB mode and color;
+- three layers;
+- key and layer clearing.
 
-Critério: bytes gravados iguais aos vetores de referência e comportamento físico correto.
+Criterion: written bytes match the reference vectors and correct physical behavior.
 
-### Fase E — falhas
+### Phase E — failures
 
-- remover o cabo durante leitura;
-- remover durante escrita antes do commit;
-- remover imediatamente após commit;
-- negar permissão ao hidraw;
-- conectar duas unidades;
-- conectar HID não relacionado;
-- resposta curta ou arquivo de captura corrompido no simulador.
+- remove the cable during reading;
+- remove during writing before commit;
+- remove immediately after commit;
+- deny permission to hidraw;
+- connect two units;
+- connect an unrelated HID device;
+- short response or corrupted capture file in the simulator.
 
-Critério: nenhuma escrita em dispositivo errado, nenhum travamento e estado final explícito.
+Criterion: no writing to the wrong device, no hangs, and an explicit final state.
 
-### Fase F — distribuição
+### Phase F — distribution
 
-Validar em:
+Validate on:
 
 - Arch Linux;
 - Fedora;
 - Ubuntu LTS;
 - GNOME/Wayland;
 - KDE/Wayland;
-- sessão X11;
+- X11 session;
 - x86_64;
-- aarch64 quando hardware estiver disponível.
+- aarch64 when hardware is available.
 
-## 14. Estratégia de testes
+## 14. Testing strategy
 
-### 14.1 Unitários
+### 14.1 Unit tests
 
-- encode/decode de cada frame;
-- validação de tamanho e Report ID;
-- round-trip de registros com bytes opacos;
-- migrations de perfil;
-- seleção da interface correta;
-- máquina de estados da sessão.
+- encode/decode of each frame;
+- size and Report ID validation;
+- round-trip of records with opaque bytes;
+- profile migrations;
+- correct interface selection;
+- session state machine.
 
 ### 14.2 Golden vectors
 
-Manter arquivos binários produzidos por captura, com metadados separados:
+Keep binary files produced by capture, with separate metadata:
 
 ```text
 tests/vectors/<variant>/<operation>/
@@ -586,45 +584,44 @@ tests/vectors/<variant>/<operation>/
   expected.json
 ```
 
-Os vetores não devem conter código do fabricante. Cada vetor registra hardware, firmware, operação humana, hash e origem da captura.
+The vectors must not contain manufacturer code. Each vector records hardware, firmware, human operation, hash, and capture origin.
 
-### 14.3 Simulador
+### 14.3 Simulator
 
-Implementar `MockTransport` que reproduz:
-
-- respostas válidas;
+Implement `MockTransport` that reproduces:
+- valid responses;
 - timeout;
-- leitura curta;
-- desconexão;
-- erro antes/depois de commit.
+- short reads;
+- disconnection;
+- error before/after commit.
 
-O simulador não substitui validação física.
+The simulator does not replace physical validation.
 
-## 15. Critérios de aceite da primeira versão
+## 15. Acceptance criteria for the first version
 
-A versão 1.0 está pronta quando:
+Version 1.0 is ready when:
 
-1. roda como binário Linux nativo, sem Wine;
-2. detecta `1189:8842` e abre somente a interface 0;
-3. identifica corretamente o hardware validado;
-4. lê e mostra as três camadas sem perda de bytes desconhecidos;
-5. edita e grava todas as categorias da seção 4.3;
-6. grava somente posições dirty, envia commit e verifica por releitura;
-7. exporta/importa perfil JSON;
-8. funciona com regra udev restrita e sem root;
-9. passa pela matriz de hardware da seção 13;
-10. não contém código, binários ou recursos do aplicativo original.
+1. it runs as a native Linux binary, without Wine;
+2. it detects `1189:8842` and opens only interface 0;
+3. it correctly identifies the validated hardware;
+4. it reads and displays the three layers without losing unknown bytes;
+5. it edits and writes all categories in section 4.3;
+6. it writes only dirty positions, sends the commit, and verifies via re-read;
+7. it exports/imports a JSON profile;
+8. it works with a restricted udev rule and without root;
+9. it passes the hardware matrix in section 13;
+10. it contains no code, binaries, or resources from the original application.
 
-## 16. Questões abertas antes da implementação completa
+## 16. Open questions before full implementation
 
-1. Confirmar em captura se a leitura transporta 64 ou 65 bytes no wire.
-2. Nomear a semântica exata dos bytes 2–4 do comando `0xFA`.
-3. Fechar todos os offsets e limites do registro de 50 bytes.
-4. Mapear a tabela completa de códigos de teclado, consumer, mouse e RGB.
-5. Confirmar o limite máximo de eventos de macro por variante.
-6. Validar cada PID alternativo e sua geometria.
-7. Determinar se existe ACK explícito de gravação ou apenas verificação por releitura.
-8. Confirmar se o commit é global, por camada ou por lote.
-9. Identificar versão de firmware e diferenças de protocolo entre variantes.
+1. Confirm via capture whether the read transports 64 or 65 bytes on the wire.
+2. Name the exact semantics of bytes 2–4 of the `0xFA` command.
+3. Finalize all offsets and boundaries of the 50-byte record.
+4. Map the complete table of keyboard, consumer, mouse, and RGB codes.
+5. Confirm the maximum number of macro events per variant.
+6. Validate each alternative PID and its geometry.
+7. Determine whether there is an explicit write ACK or only verification via re-read.
+8. Confirm whether the commit is global, per-layer, or per-batch.
+9. Identify the firmware version and protocol differences between variants.
 
-Nenhuma dessas questões autoriza um fallback de escrita por tentativa. Funcionalidade não confirmada deve permanecer desabilitada ou read-only.
+None of these questions authorizes a trial-and-error write fallback. Any functionality that has not been confirmed must remain disabled or read-only.

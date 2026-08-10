@@ -134,9 +134,9 @@ impl ActionEditor {
             });
         }
         // Shortcut recorder: capture a combo straight from the keyboard.
-        let record_btn = gtk::ToggleButton::with_label("Gravar atalho");
+        let record_btn = gtk::ToggleButton::with_label("Record shortcut");
         record_btn.set_tooltip_text(Some(
-            "Clique e pressione a combinação desejada (Esc cancela)",
+            "Click and press the desired combination (Esc cancels)",
         ));
         let record_hint = gtk::Label::new(None);
         record_hint.add_css_class("action-category-help");
@@ -164,7 +164,7 @@ impl ActionEditor {
                 }
                 let flag = Arc::new(AtomicBool::new(false));
                 *recording.borrow_mut() = Some(flag.clone());
-                hint.set_text("Pressione a combinação desejada (Esc cancela)…");
+                hint.set_text("Press the desired combination (Esc cancels)…");
                 let rx = shortcut_capture::spawn(flag);
                 let b = b.clone();
                 let hint = hint.clone();
@@ -181,13 +181,13 @@ impl ActionEditor {
                     b.set_active(false);
                     let Some(captured) = result else {
                         hint.set_text(
-                            "Nada capturado: tempo esgotado ou sem acesso a /dev/input \
-                             (grupo 'input').",
+                            "Nothing captured: timeout or no access to /dev/input \
+                             ('input' group).",
                         );
                         return;
                     };
                     if captured.usage == 0x29 && captured.modifiers.is_empty() {
-                        hint.set_text("Gravação cancelada.");
+                        hint.set_text("Recording cancelled.");
                         return;
                     }
                     let mods = captured.modifiers;
@@ -204,7 +204,7 @@ impl ActionEditor {
                         modifiers: mods,
                         usage: captured.usage,
                     };
-                    hint.set_text(&format!("Gravado: {}", action.short_label()));
+                    hint.set_text(&format!("Recorded: {}", action.short_label()));
                     let mut c = controller.borrow_mut();
                     if let Err(e) = c.apply_action_to_selected(action, None) {
                         c.model.status = e.to_string();
@@ -319,9 +319,9 @@ impl ActionEditor {
             });
         }
         // Sequence recorder: each combo pressed becomes one stroke.
-        let seq_btn = gtk::ToggleButton::with_label("Gravar sequência");
+        let seq_btn = gtk::ToggleButton::with_label("Record sequence");
         seq_btn.set_tooltip_text(Some(
-            "Grava cada combinação pressionada como um stroke (Esc encerra)",
+            "Records each pressed combination as a stroke (Esc ends)",
         ));
         {
             let seq_recording: Rc<RefCell<Option<Arc<AtomicBool>>>> =
@@ -337,7 +337,7 @@ impl ActionEditor {
                 }
                 let flag = Arc::new(AtomicBool::new(false));
                 *seq_recording.borrow_mut() = Some(flag.clone());
-                list.set_text("Gravando: pressione as combinações; Esc encerra…");
+                list.set_text("Recording: press combinations; Esc ends…");
                 let rx = shortcut_capture::spawn_sequence(flag.clone());
                 let b = b.clone();
                 let strokes = strokes.clone();
@@ -379,25 +379,25 @@ impl ActionEditor {
         // watches the device and launches the command.
         let app_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
         let app_help = gtk::Label::new(Some(
-            "Grava um marcador (F13–F24) na tecla; o daemon executa o comando. \
-             Ative: systemctl --user enable --now minikeyboard-daemon",
+            "Records a marker (F13–F24) on the key; the daemon runs the command. \
+             Enable: systemctl --user enable --now minikeyboard-daemon",
         ));
         app_help.add_css_class("action-category-help");
         app_help.set_wrap(true);
         app_help.set_xalign(0.0);
         app_help.set_max_width_chars(36);
         let cmd_entry = gtk::Entry::new();
-        cmd_entry.set_placeholder_text(Some("Comando (ex.: firefox, ~/scripts/x.sh)"));
-        let pick_btn = gtk::Button::with_label("Escolher arquivo…");
+        cmd_entry.set_placeholder_text(Some("Command (e.g.: firefox, ~/scripts/x.sh)"));
+        let pick_btn = gtk::Button::with_label("Choose file…");
         let name_entry = gtk::Entry::new();
-        name_entry.set_placeholder_text(Some("Nome exibido (opcional)"));
-        let bind_btn = gtk::Button::with_label("Vincular à tecla");
-        let unbind_btn = gtk::Button::with_label("Remover vínculo");
+        name_entry.set_placeholder_text(Some("Display name (optional)"));
+        let bind_btn = gtk::Button::with_label("Bind to key");
+        let unbind_btn = gtk::Button::with_label("Remove binding");
         {
             let cmd_entry = cmd_entry.clone();
             pick_btn.connect_clicked(move |b| {
                 let dialog = gtk::FileDialog::builder()
-                    .title("Escolher aplicação ou script")
+                    .title("Choose application or script")
                     .build();
                 let window = b.root().and_downcast::<gtk::Window>();
                 let cmd_entry = cmd_entry.clone();
@@ -424,7 +424,7 @@ impl ActionEditor {
                 let command = cmd_entry.text().trim().to_string();
                 if command.is_empty() {
                     controller.borrow_mut().model.status =
-                        "Informe o comando ou escolha um arquivo.".into();
+                        "Enter a command or choose a file.".into();
                     return;
                 }
                 let selected = controller
@@ -434,7 +434,7 @@ impl ActionEditor {
                     .map(|p| p.action.clone());
                 if selected.is_none() {
                     controller.borrow_mut().model.status =
-                        "Selecione uma tecla antes de vincular.".into();
+                        "Select a key before binding.".into();
                     return;
                 }
                 let mut list = bindings::load_bindings().unwrap_or_default();
@@ -452,7 +452,7 @@ impl ActionEditor {
                     existing.or_else(|| bindings::alloc_marker(&list))
                 else {
                     controller.borrow_mut().model.status =
-                        "Sem marcadores livres (limite de 192 vínculos).".into();
+                        "No free markers (limit of 192 bindings).".into();
                     return;
                 };
                 let name = {
@@ -489,7 +489,7 @@ impl ActionEditor {
                     None,
                 ) {
                     Ok(()) => {
-                        c.model.status = "Vínculo salvo. Faça Write e ative o daemon: \
+                        c.model.status = "Binding saved. Run Write and enable the daemon: \
                              systemctl --user enable --now minikeyboard-daemon"
                             .into();
                     }
@@ -507,12 +507,12 @@ impl ActionEditor {
                     .map(|p| p.action.clone());
                 let Some(Action::Keyboard { modifiers, usage }) = selected else {
                     controller.borrow_mut().model.status =
-                        "A tecla selecionada não tem vínculo de aplicação.".into();
+                        "The selected key has no application binding.".into();
                     return;
                 };
                 if !bindings::is_marker(usage) {
                     controller.borrow_mut().model.status =
-                        "A tecla selecionada não tem vínculo de aplicação.".into();
+                        "The selected key has no application binding.".into();
                     return;
                 }
                 let mut list = bindings::load_bindings().unwrap_or_default();
@@ -525,7 +525,7 @@ impl ActionEditor {
                 if let Err(e) = c.apply_action_to_selected(Action::Empty, None) {
                     c.model.status = e.to_string();
                 } else {
-                    c.model.status = "Vínculo removido.".into();
+                    c.model.status = "Binding removed.".into();
                 }
             });
         }
@@ -538,7 +538,7 @@ impl ActionEditor {
         app_buttons.append(&unbind_btn);
         app_box.append(&app_buttons);
         categories.append(&make_row(
-            "Aplicações e Scripts",
+            "Applications and Scripts",
             ActionKind::Keyboard,
             app_box.upcast_ref(),
         ));
@@ -596,7 +596,7 @@ impl ActionEditor {
 
         // Lighting
         let light_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
-        let mode_spin = gtk::SpinButton::with_range(0.0, 5.0, 1.0);
+        let mode_spin = gtk::SpinButton::with_range(1.0, 5.0, 1.0);
         let color_spin = gtk::SpinButton::with_range(0.0, 7.0, 1.0);
         let apply_light = gtk::Button::with_label("Apply lighting");
         {
@@ -607,14 +607,19 @@ impl ActionEditor {
                 let mode = mode_spin.value() as u8;
                 let color = color_spin.value() as u8;
                 let mut c = controller.borrow_mut();
-                if let Err(e) =
-                    c.apply_action_to_selected(Action::Lighting { mode, color }, None)
-                {
+                if let Err(e) = c.apply_lighting_to_selected_layer(mode, color) {
                     c.model.status = e.to_string();
                 }
             });
         }
-        light_box.append(&gtk::Label::new(Some("Mode (0–5)")));
+        let light_help = gtk::Label::new(Some(
+            "Applies to the selected layer; it does not replace the selected key action.",
+        ));
+        light_help.add_css_class("action-category-help");
+        light_help.set_wrap(true);
+        light_help.set_xalign(0.0);
+        light_box.append(&light_help);
+        light_box.append(&gtk::Label::new(Some("Mode (1–5)")));
         light_box.append(&mode_spin);
         light_box.append(&gtk::Label::new(Some("Color (0–7)")));
         light_box.append(&color_spin);
@@ -689,9 +694,9 @@ impl ActionEditor {
                 Action::Keyboard { modifiers, usage } if bindings::is_marker(*usage) => {
                     let list = bindings::load_bindings().unwrap_or_default();
                     let text = match bindings::find(&list, *modifiers, *usage) {
-                        Some(b) => format!("Aplicação: {} — {}", b.name, b.command),
+                        Some(b) => format!("Application: {} — {}", b.name, b.command),
                         None => format!(
-                            "Current: {} (marcador sem vínculo)",
+                            "Current: {} (marker without binding)",
                             pos.action.short_label()
                         ),
                     };
