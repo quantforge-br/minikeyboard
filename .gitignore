@@ -20,3 +20,11 @@
 # Local meson
 /meson-private/
 /meson-logs/
+
+# Vendor binaries and reverse-engineering workspaces stay outside the repo
+/linux/*.AppImage
+/win/**/*.exe
+/win/**/*.dll
+/win/**/*.o
+/win/targets/
+/win/artifacts/
