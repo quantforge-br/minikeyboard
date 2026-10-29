@@ -28,3 +28,27 @@
 /win/**/*.o
 /win/targets/
 /win/artifacts/
+
+# Reverse-engineering scratch space and agent tooling stay local
+/win/
+/.pi/
+/.agents/
+/.claude/
+/.codegraph/
+
+# Build and packaging output
+/builddir/
+/dist/
+*.AppImage
+*.deb
+*.rpm
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Secrets and local environment
+.env
+.env.*
+*.pem
+*.key
