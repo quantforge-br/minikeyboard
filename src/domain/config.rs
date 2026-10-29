@@ -59,6 +59,10 @@ pub struct DeviceConfig {
     pub schema_version: u32,
     pub identity: ProfileIdentity,
     pub layers: [LayerConfig; LAYER_COUNT],
+    /// Per-layer RGB configuration uses the protocol's reserved record 0 and is
+    /// not part of the ordinary physical-position records returned by `0xFA`.
+    #[serde(default)]
+    pub lighting: [Option<LightingConfig>; LAYER_COUNT],
     #[serde(default)]
     pub opaque_device_data: Vec<u8>,
     pub provenance: ConfigProvenance,
@@ -78,16 +82,19 @@ impl DeviceConfig {
             schema_version: SCHEMA_VERSION,
             identity,
             layers: [layer.clone(), layer.clone(), layer],
+            lighting: [None, None, None],
             opaque_device_data: Vec::new(),
             provenance,
         }
     }
 
     pub fn dirty_count(&self) -> usize {
-        self.layers
+        let positions = self
+            .layers
             .iter()
             .map(|l| l.positions.iter().filter(|p| p.dirty).count())
-            .sum()
+            .sum::<usize>();
+        positions + self.lighting.iter().flatten().filter(|l| l.dirty).count()
     }
 
     pub fn dirty_action_kinds(&self) -> std::collections::BTreeSet<ActionKind> {
@@ -99,6 +106,14 @@ impl DeviceConfig {
                 }
             }
         }
+        if self
+            .lighting
+            .iter()
+            .flatten()
+            .any(|lighting| lighting.dirty)
+        {
+            set.insert(ActionKind::Lighting);
+        }
         set
     }
 
@@ -108,6 +123,35 @@ impl DeviceConfig {
                 pos.dirty = false;
             }
         }
+        for lighting in self.lighting.iter_mut().flatten() {
+            lighting.dirty = false;
+        }
+    }
+
+    pub fn apply_lighting(
+        &mut self,
+        layer: usize,
+        mode: u8,
+        color: u8,
+        verified: &std::collections::BTreeSet<ActionKind>,
+    ) -> Result<(), CodecError> {
+        if !verified.contains(&ActionKind::Lighting) {
+            return Err(CodecError::UnverifiedAction(ActionKind::Lighting));
+        }
+        let raw_record = codec::encode_lighting_record(layer, mode, color)?;
+        let previous = self.lighting.get(layer).ok_or_else(|| {
+            CodecError::Message(format!("lighting layer {layer} outside 0..{LAYER_COUNT}"))
+        })?;
+        let dirty = previous
+            .as_ref()
+            .is_none_or(|lighting| lighting.raw_record != raw_record);
+        self.lighting[layer] = Some(LightingConfig {
+            mode,
+            color,
+            raw_record,
+            dirty,
+        });
+        Ok(())
     }
 
     pub fn is_writable(
@@ -130,6 +174,19 @@ impl DeviceConfig {
             .iter()
             .all(|kind| verified_actions.contains(kind))
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LightingConfig {
+    pub mode: u8,
+    pub color: u8,
+    #[serde(
+        serialize_with = "serialize_raw_record",
+        deserialize_with = "deserialize_raw_record"
+    )]
+    pub raw_record: [u8; RECORD_SIZE],
+    #[serde(skip, default)]
+    pub dirty: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -235,5 +292,28 @@ mod tests {
             .apply_action(Action::Opaque { mode: 1 }, None, &BTreeSet::new())
             .unwrap_err();
         assert!(matches!(err, CodecError::UnsupportedOpaqueEdit));
+    }
+
+    #[test]
+    fn lighting_does_not_replace_a_physical_position() {
+        let identity = ProfileIdentity {
+            vid: 0x1189,
+            pid: 0x8842,
+            serial: None,
+            key_count: 1,
+            extra_count: 0,
+            subtype: 0,
+        };
+        let mut config = DeviceConfig::empty_for(identity, ConfigProvenance::Mock);
+        let original = config.layers[0].positions[0].clone();
+        let verified = BTreeSet::from([ActionKind::Lighting]);
+
+        config.apply_lighting(0, 2, 3, &verified).unwrap();
+
+        assert_eq!(config.layers[0].positions[0], original);
+        assert_eq!(config.dirty_count(), 1);
+        let lighting = config.lighting[0].as_ref().unwrap();
+        assert_eq!(&lighting.raw_record[..4], &[0xFE, 0xB0, 1, 8]);
+        assert_eq!(lighting.raw_record[11], 0x23);
     }
 }

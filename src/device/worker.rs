@@ -24,7 +24,7 @@ pub enum WorkerCommand {
     Connect(DeviceIdentity),
     Identify,
     ReadConfig,
-    WriteConfig(DeviceConfig),
+    WriteConfig(Box<DeviceConfig>),
     Disconnect,
     Shutdown,
 }
@@ -418,7 +418,7 @@ fn worker_loop(cmd_rx: mpsc::Receiver<WorkerCommand>, tx: async_channel::Sender<
             Ok(WorkerCommand::Connect(id)) => state.connect(&tx, id),
             Ok(WorkerCommand::Identify) => state.identify(&tx),
             Ok(WorkerCommand::ReadConfig) => state.read_config(&tx),
-            Ok(WorkerCommand::WriteConfig(cfg)) => state.write_config(&tx, cfg),
+            Ok(WorkerCommand::WriteConfig(cfg)) => state.write_config(&tx, *cfg),
             Ok(WorkerCommand::Disconnect) => {
                 state.drop_connection();
                 let _ = state.set_session(&tx, SessionEvent::Disconnect);

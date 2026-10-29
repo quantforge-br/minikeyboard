@@ -129,6 +129,9 @@ pub fn read_device_config(
         schema_version: SCHEMA_VERSION,
         identity: identity.clone(),
         layers,
+        // The captured `0xFA` exchange starts at ordinary position 1 and does
+        // not return the reserved RGB record 0.
+        lighting: [None, None, None],
         opaque_device_data: Vec::new(),
         provenance: ConfigProvenance::VerifiedDeviceRead { capture_sha256 },
     })

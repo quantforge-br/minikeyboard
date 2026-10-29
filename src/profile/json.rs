@@ -41,6 +41,17 @@ pub fn import_profile(path: &Path) -> Result<DeviceConfig, ProfileError> {
             pos.dirty = false;
         }
     }
+    for lighting in config.lighting.iter_mut().flatten() {
+        let decoded = crate::protocol::codec::decode_record(lighting.raw_record);
+        let Action::Lighting { mode, color } = decoded.action else {
+            return Err(ProfileError::Invalid(
+                "lighting record does not contain RGB configuration".into(),
+            ));
+        };
+        lighting.mode = mode;
+        lighting.color = color;
+        lighting.dirty = false;
+    }
     Ok(config)
 }
 
@@ -86,6 +97,31 @@ fn validate_config(config: &DeviceConfig) -> Result<(), ProfileError> {
             )));
         }
         let mut seen = std::collections::BTreeSet::new();
+        if let Some(lighting) = &config.lighting[i] {
+            if !(1..=5).contains(&lighting.mode) {
+                return Err(ProfileError::Invalid(format!(
+                    "lighting mode {}",
+                    lighting.mode
+                )));
+            }
+            if lighting.color > 7 {
+                return Err(ProfileError::Invalid(format!(
+                    "lighting color {}",
+                    lighting.color
+                )));
+            }
+            let decoded = crate::protocol::codec::decode_record(lighting.raw_record);
+            if decoded.action
+                != (Action::Lighting {
+                    mode: lighting.mode,
+                    color: lighting.color,
+                })
+            {
+                return Err(ProfileError::Invalid(format!(
+                    "layer {i} lighting record mismatch"
+                )));
+            }
+        }
         for pos in &layer.positions {
             if !seen.insert(pos.logical_index) {
                 return Err(ProfileError::Invalid(format!(
@@ -172,6 +208,7 @@ mod tests {
                     positions: vec![PositionConfig::empty(0)],
                 },
             ],
+            lighting: [None, None, None],
             opaque_device_data: vec![],
             provenance: ConfigProvenance::Mock,
         }

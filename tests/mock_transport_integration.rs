@@ -38,6 +38,7 @@ fn sample_dirty_config() -> DeviceConfig {
                 positions: vec![PositionConfig::empty(0)],
             },
         ],
+        lighting: [None, None, None],
         opaque_device_data: vec![],
         provenance: ConfigProvenance::VerifiedDeviceRead {
             capture_sha256: "test".into(),

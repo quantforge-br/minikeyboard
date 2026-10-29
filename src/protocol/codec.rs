@@ -18,7 +18,7 @@ pub enum CodecError {
     #[error("opaque actions cannot be edited safely")]
     UnsupportedOpaqueEdit,
 
-    #[error("lighting mode {0} out of range 0..=5")]
+    #[error("lighting mode {0} out of range 1..=5")]
     LightingModeRange(u8),
 
     #[error("lighting color {0} out of range 0..=7")]
@@ -58,11 +58,11 @@ pub fn decode_record(raw: [u8; RECORD_SIZE]) -> DecodedRecord {
         1 => decode_keyboard(&raw),
         2 => decode_consumer(&raw),
         3 => decode_mouse(&raw),
-        5 if raw[0] == 0xFE && raw[1] == 0xB0 && raw[9] == 1 => {
+        8 if raw[0] == 0xFE && raw[1] == 0xB0 && raw[9] == 1 => {
             let packed = raw[11];
             let mode = (packed >> 4) & 0x0F;
             let color = packed & 0x0F;
-            if mode <= 5 && color <= 7 {
+            if (1..=5).contains(&mode) && color <= 7 {
                 Action::Lighting { mode, color }
             } else {
                 Action::Opaque { mode: raw[3] }
@@ -241,22 +241,11 @@ pub fn encode_record(
             }
             Ok(out)
         }
-        Action::Lighting { mode, color } => {
-            if *mode > 5 {
-                return Err(CodecError::LightingModeRange(*mode));
-            }
-            if *color > 7 {
-                return Err(CodecError::LightingColorRange(*color));
-            }
-            let layer = base[2];
-            let mut out = clean_action(base, 5, delay_ms);
-            out[0] = 0xFE;
-            out[1] = 0xB0;
-            out[2] = layer;
-            out[9] = 1;
-            out[11] = (mode << 4) | color;
-            Ok(out)
-        }
+        // RGB is stored in the reserved record 0 of each layer, never over a
+        // selected physical-position record. Use `encode_lighting_record`.
+        Action::Lighting { .. } => Err(CodecError::Message(
+            "lighting must be encoded as the reserved layer record".into(),
+        )),
         Action::Delay { delay_ms } => {
             let mut out = base;
             out[4..6].copy_from_slice(&delay_ms.to_le_bytes());
@@ -264,6 +253,34 @@ pub fn encode_record(
         }
         Action::Opaque { .. } => Err(CodecError::UnsupportedOpaqueEdit),
     }
+}
+
+/// Build the reserved RGB record used at position 0 of a one-based layer.
+pub fn encode_lighting_record(
+    layer_index: usize,
+    mode: u8,
+    color: u8,
+) -> Result<[u8; RECORD_SIZE], CodecError> {
+    if layer_index >= crate::domain::config::LAYER_COUNT {
+        return Err(CodecError::Message(format!(
+            "lighting layer {layer_index} outside 0..{}",
+            crate::domain::config::LAYER_COUNT
+        )));
+    }
+    if !(1..=5).contains(&mode) {
+        return Err(CodecError::LightingModeRange(mode));
+    }
+    if color > 7 {
+        return Err(CodecError::LightingColorRange(color));
+    }
+
+    // Category byte 8 is the LED tab marker (`DAT_0049e0fe = 8`) recovered
+    // from the manufacturer's RGB handler; the firmware ignores other values.
+    let mut out = [0u8; RECORD_SIZE];
+    out[..4].copy_from_slice(&[0xFE, 0xB0, layer_index as u8 + 1, 8]);
+    out[9] = 1;
+    out[11] = (mode << 4) | color;
+    Ok(out)
 }
 
 /// Action mappings recovered from the validated 1189:8842 implementation and hardware readback.
@@ -379,12 +396,24 @@ mod tests {
     }
 
     #[test]
-    fn lighting_roundtrip() {
+    fn lighting_is_not_encoded_over_a_physical_position() {
         let action = Action::Lighting { mode: 2, color: 3 };
-        let raw =
-            encode_record(identity_record(5), &action, None, &verified_action_kinds()).unwrap();
-        assert_eq!(&raw[..3], &[0xFE, 0xB0, 2]);
-        assert_eq!(decode_record(raw).action, action);
+        assert!(
+            encode_record(identity_record(5), &action, None, &verified_action_kinds()).is_err(),
+            "lighting belongs to the reserved layer record, not the selected key"
+        );
+    }
+
+    #[test]
+    fn lighting_uses_reserved_one_based_layer_record() {
+        let raw = encode_lighting_record(1, 2, 3).unwrap();
+        assert_eq!(&raw[..4], &[0xFE, 0xB0, 2, 8]);
+        assert_eq!(raw[9], 1);
+        assert_eq!(raw[11], 0x23);
+        assert_eq!(
+            decode_record(raw).action,
+            Action::Lighting { mode: 2, color: 3 }
+        );
     }
 
     #[test]

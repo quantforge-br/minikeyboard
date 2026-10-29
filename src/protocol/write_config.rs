@@ -100,18 +100,30 @@ pub fn write_dirty_records(
     authorize(config, authorization)?;
 
     let mut dirty: Vec<(usize, u8, [u8; 50])> = Vec::new();
+    let mut dirty_lighting: Vec<(usize, [u8; 50])> = Vec::new();
     for (layer_idx, layer) in config.layers.iter().enumerate() {
         for pos in &layer.positions {
             if pos.dirty {
                 dirty.push((layer_idx, pos.logical_index, pos.raw_record));
             }
         }
+        if let Some(lighting) = &config.lighting[layer_idx]
+            && lighting.dirty
+        {
+            dirty_lighting.push((layer_idx, lighting.raw_record));
+        }
     }
-    if dirty.is_empty() {
+    if dirty.is_empty() && dirty_lighting.is_empty() {
         return Err(WriteError::NothingDirty);
     }
     dirty.sort_by_key(|(l, i, _)| (*l, *i));
+    dirty_lighting.sort_by_key(|(layer, _)| *layer);
 
+    // The manufacturer's implementation writes reserved RGB record 0 before
+    // the ordinary physical positions for each layer.
+    for (_, record) in &dirty_lighting {
+        transport.write_report(&position_report(record))?;
+    }
     for (_, _, record) in &dirty {
         transport.write_report(&position_report(record))?;
     }
@@ -145,6 +157,10 @@ pub fn write_dirty_records(
             if !verified {
                 return Err(WriteError::Protocol(ProtocolError::VerificationMismatch));
             }
+            // `0xFA` does not return reserved record 0, so successful commit
+            // plus exact verification of all ordinary records is the strongest
+            // available result. Preserve the requested RGB state in memory.
+            fresh.lighting = config.lighting.clone();
             fresh.clear_dirty();
             Ok(fresh)
         }
@@ -204,6 +220,7 @@ mod tests {
                     positions: vec![PositionConfig::empty(0)],
                 },
             ],
+            lighting: [None, None, None],
             opaque_device_data: vec![],
             provenance: ConfigProvenance::VerifiedDeviceRead {
                 capture_sha256: "abc".into(),
@@ -277,6 +294,27 @@ mod tests {
         response[11] = 0x08;
         response[12] = usage;
         response
+    }
+
+    #[test]
+    fn lighting_write_uses_reserved_record_before_commit() {
+        let mut config = sample_config(false);
+        config
+            .apply_lighting(0, 2, 3, &BTreeSet::from([ActionKind::Lighting]))
+            .unwrap();
+        let lighting = config.lighting[0].as_ref().unwrap().raw_record;
+        let mut auth = full_auth();
+        auth.verified_actions.insert(ActionKind::Lighting);
+        let mut transport = MockTransport::new(vec![
+            MockStep::ExpectWrite(position_report(&lighting)),
+            MockStep::ExpectWrite(commit_report()),
+        ]);
+
+        let error = write_dirty_records(&mut transport, &config, &auth).unwrap_err();
+
+        assert!(matches!(error, WriteError::IndeterminateCommit));
+        assert_eq!(transport.writes()[0], position_report(&lighting));
+        assert_eq!(transport.writes()[1], commit_report());
     }
 
     #[test]

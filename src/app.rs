@@ -139,7 +139,7 @@ impl AppController {
 
     pub fn write_changes(&mut self) {
         if let Some(cfg) = self.model.config.clone() {
-            self.send(WorkerCommand::WriteConfig(cfg));
+            self.send(WorkerCommand::WriteConfig(Box::new(cfg)));
         }
     }
 
@@ -168,6 +168,38 @@ impl AppController {
             self.model.session_state = SessionState::ReadyClean;
             self.model.status = "Changes reverted.".into();
         }
+    }
+
+    pub fn apply_lighting_to_selected_layer(
+        &mut self,
+        mode: u8,
+        color: u8,
+    ) -> Result<(), AppError> {
+        if !self.model.session_state.allows_edit() {
+            return Err(AppError::Message(
+                "editing is not allowed in the current session state".into(),
+            ));
+        }
+        let layer = self.model.selected_layer;
+        let verified = self.model.verified_actions.clone();
+        let cfg = self
+            .model
+            .config
+            .as_mut()
+            .ok_or_else(|| AppError::Message("no configuration loaded".into()))?;
+        cfg.apply_lighting(layer, mode, color, &verified)?;
+        let dirty = cfg.dirty_count() > 0;
+        self.model.session_state = if dirty {
+            SessionState::ReadyDirty
+        } else {
+            SessionState::ReadyClean
+        };
+        self.model.status = if dirty {
+            format!("{} pending change(s).", cfg.dirty_count())
+        } else {
+            "Ready.".into()
+        };
+        Ok(())
     }
 
     pub fn apply_action_to_selected(
@@ -204,7 +236,7 @@ impl AppController {
             SessionState::ReadyClean
         };
         self.model.status = if dirty {
-            format!("{} dirty position(s).", cfg.dirty_count())
+            format!("{} pending change(s).", cfg.dirty_count())
         } else {
             "Ready.".into()
         };
