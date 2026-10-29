@@ -126,6 +126,7 @@ impl MiniKeyboardWindow {
         key_grid.add_css_class("key-grid");
         key_grid.set_row_spacing(8);
         key_grid.set_column_spacing(8);
+        key_grid.set_column_homogeneous(true);
         key_grid.set_halign(gtk::Align::Center);
         key_grid.set_valign(gtk::Align::Center);
         key_grid.set_vexpand(true);
@@ -193,7 +194,7 @@ impl MiniKeyboardWindow {
                 let dialog = adw::AlertDialog::new(
                     Some("Write changes?"),
                     Some(&format!(
-                        "Write {dirty} dirty position(s) to {target}?\n\nThis modifies device firmware storage."
+                        "Write {dirty} pending change(s) to {target}?\n\nThis modifies device firmware storage."
                     )),
                 );
                 dialog.add_response("cancel", "Cancel");
@@ -220,7 +221,7 @@ impl MiniKeyboardWindow {
                 }
                 let dialog = adw::AlertDialog::new(
                     Some("Revert changes?"),
-                    Some(&format!("Discard {dirty} dirty position(s)?")),
+                    Some(&format!("Discard {dirty} pending change(s)?")),
                 );
                 dialog.add_response("cancel", "Cancel");
                 dialog.add_response("revert", "Revert");
@@ -331,7 +332,7 @@ impl MiniKeyboardWindow {
                     let dialog = adw::AlertDialog::new(
                         Some("Unsaved changes"),
                         Some(&format!(
-                            "You have {dirty} dirty position(s). Close anyway?"
+                            "You have {dirty} pending change(s). Close anyway?"
                         )),
                     );
                     dialog.add_response("cancel", "Cancel");
@@ -552,7 +553,7 @@ fn render(controller: &SharedController, ui: &Rc<RenderUi>) {
     if let Some(reason) = status::write_blocked_reason(&model) {
         ui.write_btn.set_tooltip_text(Some(&reason));
     } else {
-        ui.write_btn.set_tooltip_text(Some("Write dirty positions"));
+        ui.write_btn.set_tooltip_text(Some("Write pending changes"));
     }
     let can_read = matches!(
         model.session_state,
@@ -607,16 +608,24 @@ fn render(controller: &SharedController, ui: &Rc<RenderUi>) {
             // action so every physical control stays identifiable per layer.
             let caption = gtk::Label::new(Some(&pos.label));
             caption.add_css_class("key-caption");
+            caption.set_ellipsize(gtk::pango::EllipsizeMode::End);
+            let is_empty = assigned.is_none();
             let action_label = gtk::Label::new(Some(assigned.as_deref().unwrap_or("—")));
             action_label.add_css_class("key-action");
+            if is_empty {
+                action_label.add_css_class("key-action-empty");
+            }
             action_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
+            action_label.set_width_chars(9);
             action_label.set_max_width_chars(9);
             let key_box = gtk::Box::new(gtk::Orientation::Vertical, 2);
             key_box.set_valign(gtk::Align::Center);
+            key_box.set_halign(gtk::Align::Fill);
             key_box.append(&caption);
             key_box.append(&action_label);
             let btn = gtk::ToggleButton::new();
             btn.set_child(Some(&key_box));
+            btn.set_hexpand(false);
             btn.add_css_class("key-button");
             if pos.kind == crate::domain::geometry::DisplayKind::Knob {
                 btn.add_css_class("knob-button");
