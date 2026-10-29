@@ -84,6 +84,17 @@ configure_file(
   install_dir: 'lib' / 'systemd' / 'user',
 )
 
+# Enable the user daemon at install time so a clean install starts it on the
+# next user login without a manual `systemctl --user enable`. This mirrors the
+# symlink enabling creates from the unit's `WantedBy=default.target`. To start
+# without a login session (headless/boot), the user also needs lingering:
+# `loginctl enable-linger <user>`.
+install_symlink(
+  'minikeyboard-daemon.service',
+  install_dir: 'lib' / 'systemd' / 'user' / 'default.target.wants',
+  pointing_to: '..' / 'minikeyboard-daemon.service',
+)
+
 install_data(
   'data' / app_id + '.desktop',
   install_dir: datadir / 'applications',
