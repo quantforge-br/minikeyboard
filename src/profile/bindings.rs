@@ -72,7 +72,10 @@ fn load_from(path: &std::path::Path) -> Result<Vec<AppBinding>, ProfileError> {
 }
 
 fn save_to(path: &std::path::Path, bindings: &[AppBinding]) -> Result<(), ProfileError> {
-    std::fs::write(path, serde_json::to_string_pretty(bindings)?)?;
+    // Write-then-rename so the daemon never reloads a half-written file.
+    let tmp = path.with_extension("json.tmp");
+    std::fs::write(&tmp, serde_json::to_string_pretty(bindings)?)?;
+    std::fs::rename(&tmp, path)?;
     Ok(())
 }
 

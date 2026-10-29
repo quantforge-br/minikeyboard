@@ -37,7 +37,11 @@ impl Bindings {
     }
 
     fn reload(&mut self) {
-        self.list = bindings::load_bindings().unwrap_or_default();
+        match bindings::load_bindings() {
+            Ok(list) => self.list = list,
+            // Keep the last good bindings if the file is unreadable or invalid.
+            Err(e) => eprintln!("bindings reload failed, keeping previous: {e}"),
+        }
         self.mtime = bindings::bindings_path()
             .ok()
             .and_then(|p| std::fs::metadata(p).ok())
