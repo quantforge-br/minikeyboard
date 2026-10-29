@@ -49,8 +49,12 @@ pub enum SessionEvent {
     IdentifiedKnown,
     IdentifiedUnknown,
     BeginRead,
-    ReadComplete { dirty: bool },
-    EditApplied { has_dirty: bool },
+    ReadComplete {
+        dirty: bool,
+    },
+    EditApplied {
+        has_dirty: bool,
+    },
     BeginWrite,
     WriteVerified,
     Fail,
@@ -200,9 +204,10 @@ mod tests {
         m.transition(SessionEvent::EditApplied { has_dirty: true })
             .unwrap();
         m.transition(SessionEvent::BeginWrite).unwrap();
-        assert!(m
-            .transition(SessionEvent::EditApplied { has_dirty: true })
-            .is_err());
+        assert!(
+            m.transition(SessionEvent::EditApplied { has_dirty: true })
+                .is_err()
+        );
     }
 
     #[test]

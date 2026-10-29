@@ -15,7 +15,11 @@ fn main() {
         .expect("1189:8842 interface 0");
     eprintln!("opening {}", device.path);
     let hid = api
-        .open_path(std::ffi::CString::new(device.path.as_str()).unwrap().as_c_str())
+        .open_path(
+            std::ffi::CString::new(device.path.as_str())
+                .unwrap()
+                .as_c_str(),
+        )
         .expect("open path");
     let mut transport = RealHidTransport::new(hid);
 

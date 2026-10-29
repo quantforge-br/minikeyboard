@@ -4,8 +4,8 @@ use gtk::prelude::*;
 use gtk::{gio, glib};
 use tracing_subscriber::EnvFilter;
 
-use minikeyboard::ui::MiniKeyboardWindow;
 use minikeyboard::APP_ID;
+use minikeyboard::ui::MiniKeyboardWindow;
 
 fn main() -> glib::ExitCode {
     // English UI (product decision). Set before GTK init.
@@ -15,8 +15,8 @@ fn main() -> glib::ExitCode {
         std::env::set_var("LANGUAGE", "en_US");
     }
 
-    let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("minikeyboard=info"));
+    let filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("minikeyboard=info"));
     tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_target(true)

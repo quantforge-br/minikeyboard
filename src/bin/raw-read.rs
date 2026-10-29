@@ -10,7 +10,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api = hidapi::HidApi::new()?;
     let device = discover(&api)?
         .into_iter()
-        .find(|candidate| candidate.vid == 0x1189 && candidate.pid == 0x8842 && candidate.interface_number == 0)
+        .find(|candidate| {
+            candidate.vid == 0x1189 && candidate.pid == 0x8842 && candidate.interface_number == 0
+        })
         .ok_or("1189:8842 interface 0 not found")?;
     let hid = api.open_path(std::ffi::CString::new(device.path.as_str())?.as_c_str())?;
     let mut transport = RealHidTransport::new(hid);

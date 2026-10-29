@@ -28,11 +28,7 @@ pub fn is_marker(usage: u8) -> bool {
     (MARKER_MIN..=MARKER_MAX).contains(&usage)
 }
 
-pub fn find(
-    bindings: &[AppBinding],
-    modifiers: Modifiers,
-    usage: u8,
-) -> Option<&AppBinding> {
+pub fn find(bindings: &[AppBinding], modifiers: Modifiers, usage: u8) -> Option<&AppBinding> {
     bindings
         .iter()
         .find(|b| b.usage == usage && b.modifiers == modifiers)

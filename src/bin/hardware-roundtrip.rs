@@ -1,17 +1,17 @@
 //! One-shot real-hardware validation: backup, reversible write/readback, restore/readback.
 
-use std::thread;
 use std::fs;
 use std::path::PathBuf;
+use std::thread;
 
 use minikeyboard::device::discovery::discover;
-use minikeyboard::device::transport::RealHidTransport;
 use minikeyboard::device::transport::HidTransport;
+use minikeyboard::device::transport::RealHidTransport;
 use minikeyboard::domain::action::Action;
 use minikeyboard::domain::config::{ProfileIdentity, SupportLevel};
 use minikeyboard::profile::json;
 use minikeyboard::protocol::codec::verified_action_kinds;
-use minikeyboard::protocol::frame::{commit_report, position_report, POST_COMMIT_DELAY};
+use minikeyboard::protocol::frame::{POST_COMMIT_DELAY, commit_report, position_report};
 use minikeyboard::protocol::identify;
 use minikeyboard::protocol::read_config::{self, current_read_capability};
 use minikeyboard::protocol::write_config::{self, WriteAuthorization};
@@ -22,9 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let device = discover(&api)?
         .into_iter()
         .find(|candidate| {
-            candidate.vid == 0x1189
-                && candidate.pid == 0x8842
-                && candidate.interface_number == 0
+            candidate.vid == 0x1189 && candidate.pid == 0x8842 && candidate.interface_number == 0
         })
         .ok_or("1189:8842 interface 0 not found")?;
     eprintln!("opening {}", device.path);
@@ -69,15 +67,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let mut probe = original.clone();
-    probe
-        .layers[target_layer]
+    probe.layers[target_layer]
         .positions
         .iter_mut()
         .find(|position| position.logical_index == target_index)
         .expect("target position")
-        .apply_action(probe_action.clone(), original_position.delay_ms, &verified_action_kinds())?;
+        .apply_action(
+            probe_action.clone(),
+            original_position.delay_ms,
+            &verified_action_kinds(),
+        )?;
     println!(
-        "PROBE layer=1 position={} original={} temporary={}", target_index + 1,
+        "PROBE layer=1 position={} original={} temporary={}",
+        target_index + 1,
         original_position.action.short_label(),
         probe_action.short_label()
     );
@@ -125,7 +127,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     current.delay_ms = original_position.delay_ms;
     current.dirty = true;
 
-    let restored = write_config::write_dirty_records(&mut transport, &restore_config, &authorization)?;
+    let restored =
+        write_config::write_dirty_records(&mut transport, &restore_config, &authorization)?;
     let restored_digest = config_digest(&restored);
     if !same_records(&original, &restored) {
         return Err(format!(
@@ -186,15 +189,19 @@ fn same_records(
     right: &minikeyboard::domain::config::DeviceConfig,
 ) -> bool {
     left.identity == right.identity
-        && left.layers.iter().zip(&right.layers).all(|(left_layer, right_layer)| {
-            left_layer.positions.len() == right_layer.positions.len()
-                && left_layer.positions.iter().zip(&right_layer.positions).all(
-                    |(left_position, right_position)| {
-                        left_position.logical_index == right_position.logical_index
-                            && left_position.raw_record == right_position.raw_record
-                    },
-                )
-        })
+        && left
+            .layers
+            .iter()
+            .zip(&right.layers)
+            .all(|(left_layer, right_layer)| {
+                left_layer.positions.len() == right_layer.positions.len()
+                    && left_layer.positions.iter().zip(&right_layer.positions).all(
+                        |(left_position, right_position)| {
+                            left_position.logical_index == right_position.logical_index
+                                && left_position.raw_record == right_position.raw_record
+                        },
+                    )
+            })
 }
 
 fn config_digest(config: &minikeyboard::domain::config::DeviceConfig) -> String {
@@ -206,4 +213,3 @@ fn config_digest(config: &minikeyboard::domain::config::DeviceConfig) -> String 
     }
     hex::encode(hasher.finalize())
 }
-

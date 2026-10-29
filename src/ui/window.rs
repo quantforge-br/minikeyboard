@@ -12,7 +12,6 @@ use super::status::{self, RailTone};
 use crate::app::{AppController, SharedController};
 use crate::device::session::SessionState;
 
-
 pub struct MiniKeyboardWindow {
     pub window: adw::ApplicationWindow,
 }
@@ -252,21 +251,17 @@ impl MiniKeyboardWindow {
                 filters.append(&filter);
                 dialog.set_filters(Some(&filters));
                 let c2 = c.clone();
-                dialog.save(
-                    Some(&window),
-                    gio::Cancellable::NONE,
-                    move |result| {
-                        if let Ok(file) = result
-                            && let Some(path) = file.path()
-                        {
-                            let mut ctrl = c2.borrow_mut();
-                            match ctrl.export_profile(path, false) {
-                                Ok(()) => ctrl.model.status = "Profile exported.".into(),
-                                Err(e) => ctrl.model.status = e.to_string(),
-                            }
+                dialog.save(Some(&window), gio::Cancellable::NONE, move |result| {
+                    if let Ok(file) = result
+                        && let Some(path) = file.path()
+                    {
+                        let mut ctrl = c2.borrow_mut();
+                        match ctrl.export_profile(path, false) {
+                            Ok(()) => ctrl.model.status = "Profile exported.".into(),
+                            Err(e) => ctrl.model.status = e.to_string(),
                         }
-                    },
-                );
+                    }
+                });
             });
         }
         {
@@ -281,20 +276,16 @@ impl MiniKeyboardWindow {
                 filters.append(&filter);
                 dialog.set_filters(Some(&filters));
                 let c2 = c.clone();
-                dialog.open(
-                    Some(&window),
-                    gio::Cancellable::NONE,
-                    move |result| {
-                        if let Ok(file) = result
-                            && let Some(path) = file.path()
-                        {
-                            let mut ctrl = c2.borrow_mut();
-                            if let Err(e) = ctrl.import_profile(path) {
-                                ctrl.model.status = e.to_string();
-                            }
+                dialog.open(Some(&window), gio::Cancellable::NONE, move |result| {
+                    if let Ok(file) = result
+                        && let Some(path) = file.path()
+                    {
+                        let mut ctrl = c2.borrow_mut();
+                        if let Err(e) = ctrl.import_profile(path) {
+                            ctrl.model.status = e.to_string();
                         }
-                    },
-                );
+                    }
+                });
             });
         }
         {
@@ -306,23 +297,19 @@ impl MiniKeyboardWindow {
                     .initial_name("minikeyboard-diagnostics.json")
                     .build();
                 let c2 = c.clone();
-                dialog.save(
-                    Some(&window),
-                    gio::Cancellable::NONE,
-                    move |result| {
-                        if let Ok(file) = result
-                            && let Some(path) = file.path()
-                        {
-                            let mut ctrl = c2.borrow_mut();
-                            match ctrl.export_diagnostics(path) {
-                                Ok(()) => {
-                                    ctrl.model.status = "Diagnostics exported.".into();
-                                }
-                                Err(e) => ctrl.model.status = e.to_string(),
+                dialog.save(Some(&window), gio::Cancellable::NONE, move |result| {
+                    if let Ok(file) = result
+                        && let Some(path) = file.path()
+                    {
+                        let mut ctrl = c2.borrow_mut();
+                        match ctrl.export_diagnostics(path) {
+                            Ok(()) => {
+                                ctrl.model.status = "Diagnostics exported.".into();
                             }
+                            Err(e) => ctrl.model.status = e.to_string(),
                         }
-                    },
-                );
+                    }
+                });
             });
         }
 
@@ -422,8 +409,7 @@ impl MiniKeyboardWindow {
             let ui = ui.clone();
             glib::MainContext::default().spawn_local(async move {
                 while let Ok(ev) = rx.recv().await {
-                    let is_devices =
-                        matches!(ev, crate::device::worker::WorkerEvent::Devices(_));
+                    let is_devices = matches!(ev, crate::device::worker::WorkerEvent::Devices(_));
                     controller.borrow_mut().handle_worker_event(ev);
                     if is_devices {
                         // Connect automatically once a device is available.
@@ -592,26 +578,25 @@ fn render(controller: &SharedController, ui: &Rc<RenderUi>) {
 
     if let Some(variant) = &model.variant {
         ui.content_stack.set_visible_child_name("grid");
-        let app_bindings =
-            crate::profile::bindings::load_bindings().unwrap_or_default();
+        let app_bindings = crate::profile::bindings::load_bindings().unwrap_or_default();
         let mut group: Option<gtk::ToggleButton> = None;
         for pos in &variant.geometry.positions {
             let assigned = model.config.as_ref().and_then(|cfg| {
                 cfg.layers
                     .get(model.selected_layer)
-                    .and_then(|l| l.positions.iter().find(|p| p.logical_index == pos.logical_index))
+                    .and_then(|l| {
+                        l.positions
+                            .iter()
+                            .find(|p| p.logical_index == pos.logical_index)
+                    })
                     .map(|p| {
                         let base = match &p.action {
                             crate::domain::action::Action::Keyboard { modifiers, usage }
                                 if crate::profile::bindings::is_marker(*usage) =>
                             {
-                                crate::profile::bindings::find(
-                                    &app_bindings,
-                                    *modifiers,
-                                    *usage,
-                                )
-                                .map(|b| format!("▶ {}", b.name))
-                                .unwrap_or_else(|| p.action.short_label())
+                                crate::profile::bindings::find(&app_bindings, *modifiers, *usage)
+                                    .map(|b| format!("▶ {}", b.name))
+                                    .unwrap_or_else(|| p.action.short_label())
                             }
                             _ => p.action.short_label(),
                         };
@@ -643,10 +628,11 @@ fn render(controller: &SharedController, ui: &Rc<RenderUi>) {
             }
             btn.set_accessible_role(gtk::AccessibleRole::Button);
             if let Some(cfg) = &model.config
-                && let Some(p) = cfg
-                    .layers
-                    .get(model.selected_layer)
-                    .and_then(|l| l.positions.iter().find(|p| p.logical_index == pos.logical_index))
+                && let Some(p) = cfg.layers.get(model.selected_layer).and_then(|l| {
+                    l.positions
+                        .iter()
+                        .find(|p| p.logical_index == pos.logical_index)
+                })
                 && p.dirty
             {
                 btn.add_css_class("dirty-key");

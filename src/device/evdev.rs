@@ -15,10 +15,10 @@ const EVIOCGRAB: libc::c_ulong = 0x4004_4590;
 
 pub fn modifier_bit(code: u16) -> Option<Modifiers> {
     match code {
-        29 | 97 => Some(Modifiers::CTRL),   // KEY_LEFTCTRL / KEY_RIGHTCTRL
-        42 | 54 => Some(Modifiers::SHIFT),  // KEY_LEFTSHIFT / KEY_RIGHTSHIFT
-        56 | 100 => Some(Modifiers::ALT),   // KEY_LEFTALT / KEY_RIGHTALT
-        125 | 126 => Some(Modifiers::GUI),  // KEY_LEFTMETA / KEY_RIGHTMETA
+        29 | 97 => Some(Modifiers::CTRL),  // KEY_LEFTCTRL / KEY_RIGHTCTRL
+        42 | 54 => Some(Modifiers::SHIFT), // KEY_LEFTSHIFT / KEY_RIGHTSHIFT
+        56 | 100 => Some(Modifiers::ALT),  // KEY_LEFTALT / KEY_RIGHTALT
+        125 | 126 => Some(Modifiers::GUI), // KEY_LEFTMETA / KEY_RIGHTMETA
         _ => None,
     }
 }
@@ -37,9 +37,8 @@ pub fn keyboard_nodes(vendor_product: Option<(&str, &str)>) -> Vec<String> {
             ident = line;
         } else if let Some(handlers) = line.strip_prefix("H: Handlers=")
             && handlers.split_whitespace().any(|h| h == "kbd")
-            && vendor_product.is_none_or(|(v, p)| {
-                ident.contains(&format!("Vendor={v} Product={p}"))
-            })
+            && vendor_product
+                .is_none_or(|(v, p)| ident.contains(&format!("Vendor={v} Product={p}")))
         {
             nodes.extend(
                 handlers

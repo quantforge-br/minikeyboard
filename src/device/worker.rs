@@ -6,10 +6,10 @@ use std::time::{Duration, Instant};
 
 use tracing::{debug, info, warn};
 
+use super::DeviceError;
 use super::discovery::{self, DeviceIdentity};
 use super::session::{SessionEvent, SessionMachine, SessionState};
 use super::transport::{HidTransport, RealHidTransport, TransportError};
-use super::DeviceError;
 use crate::domain::config::{DeviceConfig, ProfileIdentity, SupportLevel};
 use crate::domain::geometry::DeviceVariant;
 use crate::error::AppError;
@@ -166,7 +166,11 @@ impl WorkerState {
 
     fn connect(&mut self, tx: &async_channel::Sender<WorkerEvent>, id: DeviceIdentity) {
         if self.connected {
-            if self.identity.as_ref().is_some_and(|cur| cur.path == id.path) {
+            if self
+                .identity
+                .as_ref()
+                .is_some_and(|cur| cur.path == id.path)
+            {
                 debug!(path = %id.path, "already connected; ignoring Connect");
                 return;
             }

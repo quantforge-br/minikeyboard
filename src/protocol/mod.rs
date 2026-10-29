@@ -7,8 +7,8 @@ pub mod write_config;
 pub use codec::CodecError;
 pub use frame::*;
 pub use identify::identify;
-pub use read_config::{ReadCapability, ReadConfigCommand, DEFAULT_READ};
-pub use write_config::{write_dirty_records, WriteAuthorization, WriteError};
+pub use read_config::{DEFAULT_READ, ReadCapability, ReadConfigCommand};
+pub use write_config::{WriteAuthorization, WriteError, write_dirty_records};
 
 use thiserror::Error;
 

@@ -14,7 +14,7 @@ use crate::error::AppError;
 use crate::profile::diagnostics::{self, DiagnosticInput};
 use crate::profile::json::{self, IdentityImportNote};
 use crate::protocol::codec::verified_action_kinds;
-use crate::protocol::read_config::{current_read_capability, ReadCapability};
+use crate::protocol::read_config::{ReadCapability, current_read_capability};
 
 #[derive(Debug, Clone)]
 pub struct AppModel {
@@ -74,9 +74,7 @@ impl AppModel {
         self.config.as_ref().map(|c| c.dirty_count()).unwrap_or(0)
     }
 
-    pub fn selected_position_config(
-        &self,
-    ) -> Option<&crate::domain::config::PositionConfig> {
+    pub fn selected_position_config(&self) -> Option<&crate::domain::config::PositionConfig> {
         let cfg = self.config.as_ref()?;
         let idx = self.selected_position?;
         cfg.layers
@@ -150,12 +148,7 @@ impl AppController {
     }
 
     pub fn select_device(&mut self, path: &str) {
-        self.model.selected_device = self
-            .model
-            .devices
-            .iter()
-            .find(|d| d.path == path)
-            .cloned();
+        self.model.selected_device = self.model.devices.iter().find(|d| d.path == path).cloned();
     }
 
     pub fn select_layer(&mut self, layer: usize) {
@@ -362,8 +355,7 @@ fn format_status_error(err: &AppError) -> String {
                 .into()
         }
         AppError::Write(crate::protocol::WriteError::IndeterminateCommit) => {
-            "Disconnected during write — outcome is indeterminate. Reconnect and read back."
-                .into()
+            "Disconnected during write — outcome is indeterminate. Reconnect and read back.".into()
         }
         AppError::Profile(crate::profile::ProfileError::IdentityMismatch { profile, device }) => {
             format!("Profile mismatch: profile {profile} vs device {device}.")
@@ -425,9 +417,7 @@ fn seed_known(model: &mut AppModel, dirty: bool) {
         subtype: variant.subtype,
     };
     let mut cfg = DeviceConfig::empty_for(identity, ConfigProvenance::Mock);
-    if dirty
-        && let Some(pos) = cfg.layers[0].positions.get_mut(0)
-    {
+    if dirty && let Some(pos) = cfg.layers[0].positions.get_mut(0) {
         pos.dirty = true;
         pos.action = Action::Opaque { mode: 1 };
     }

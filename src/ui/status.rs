@@ -56,13 +56,14 @@ pub fn write_blocked_reason(model: &AppModel) -> Option<String> {
 /// Protocol rail steps for the signature visual element.
 pub fn rail_steps(state: SessionState) -> Vec<(&'static str, RailTone)> {
     use RailTone::*;
-    let active = |s: SessionState, label: &'static str, tone: RailTone| -> (&'static str, RailTone) {
-        if state == s {
-            (label, tone)
-        } else {
-            (label, Idle)
-        }
-    };
+    let active =
+        |s: SessionState, label: &'static str, tone: RailTone| -> (&'static str, RailTone) {
+            if state == s {
+                (label, tone)
+            } else {
+                (label, Idle)
+            }
+        };
     // Show condensed pipeline: Disconnected → Identifying → Ready/Read-only → Writing/Verified
     let mut steps = Vec::new();
     steps.push(match state {

@@ -11,9 +11,9 @@ use crate::domain::config::{
     ConfigProvenance, DeviceConfig, LayerConfig, PositionConfig, ProfileIdentity, RECORD_SIZE,
     SCHEMA_VERSION,
 };
-use crate::protocol::codec;
-use crate::protocol::frame::{read_config_report, REPORT_ID};
 use crate::protocol::ProtocolError;
+use crate::protocol::codec;
+use crate::protocol::frame::{REPORT_ID, read_config_report};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ReadConfigCommand {
@@ -47,7 +47,9 @@ const CAPTURE_VECTOR_SHA256: &str =
 pub enum ReadCapability {
     #[default]
     Unverified,
-    Verified { vector_set_sha256: String },
+    Verified {
+        vector_set_sha256: String,
+    },
 }
 
 /// Read capability is scoped to the captured 1189:8842 tuple.
@@ -230,7 +232,10 @@ mod tests {
             [24, 24, 24]
         );
         assert_eq!(config.layers[0].positions[0].logical_index, 0);
-        assert_eq!(&config.layers[0].positions[0].raw_record[..4], &[0xFD, 1, 1, 1]);
+        assert_eq!(
+            &config.layers[0].positions[0].raw_record[..4],
+            &[0xFD, 1, 1, 1]
+        );
         assert_eq!(transport.remaining(), 0);
         assert!(matches!(
             config.provenance,

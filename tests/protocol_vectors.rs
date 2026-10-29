@@ -21,9 +21,11 @@ fn identify_request_matches_constructor() {
         serde_json::from_str(&fs::read_to_string(meta_path).unwrap()).unwrap();
     assert_eq!(meta["provenance"], "documented-request");
     // Documented request alone must not imply a captured response.
-    assert!(!vectors_root()
-        .join("1189-8842/identify/response.bin")
-        .exists());
+    assert!(
+        !vectors_root()
+            .join("1189-8842/identify/response.bin")
+            .exists()
+    );
 }
 
 #[test]

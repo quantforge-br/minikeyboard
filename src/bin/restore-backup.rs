@@ -5,7 +5,7 @@ use std::thread;
 use minikeyboard::device::discovery::discover;
 use minikeyboard::device::transport::{HidTransport, RealHidTransport};
 use minikeyboard::profile::json;
-use minikeyboard::protocol::frame::{commit_report, position_report, POST_COMMIT_DELAY};
+use minikeyboard::protocol::frame::{POST_COMMIT_DELAY, commit_report, position_report};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let path = std::env::args()
@@ -37,9 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let device = discover(&api)?
         .into_iter()
         .find(|candidate| {
-            candidate.vid == 0x1189
-                && candidate.pid == 0x8842
-                && candidate.interface_number == 0
+            candidate.vid == 0x1189 && candidate.pid == 0x8842 && candidate.interface_number == 0
         })
         .ok_or("1189:8842 interface 0 not found")?;
     eprintln!("opening {}", device.path);

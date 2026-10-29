@@ -8,9 +8,9 @@ use thiserror::Error;
 use crate::device::transport::HidTransport;
 use crate::domain::action::ActionKind;
 use crate::domain::config::{ConfigProvenance, DeviceConfig, SupportLevel};
-use crate::protocol::frame::{commit_report, position_report, POST_COMMIT_DELAY};
-use crate::protocol::read_config::{read_device_config, ReadCapability};
 use crate::protocol::ProtocolError;
+use crate::protocol::frame::{POST_COMMIT_DELAY, commit_report, position_report};
+use crate::protocol::read_config::{ReadCapability, read_device_config};
 
 #[derive(Debug, Clone)]
 pub struct WriteAuthorization {
@@ -289,11 +289,15 @@ mod tests {
             MockStep::ExpectWrite(commit_report()),
         ];
         for pass in 1..=3 {
-            steps.push(MockStep::ExpectWrite(crate::protocol::frame::read_config_report(
-                15, 3, pass,
-            )));
+            steps.push(MockStep::ExpectWrite(
+                crate::protocol::frame::read_config_report(15, 3, pass),
+            ));
             for position in 1..=24 {
-                steps.push(MockStep::Read(read_response(position, pass, 0x04 + position)));
+                steps.push(MockStep::Read(read_response(
+                    position,
+                    pass,
+                    0x04 + position,
+                )));
             }
         }
         let mut transport = MockTransport::new(steps);

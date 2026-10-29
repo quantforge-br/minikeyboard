@@ -5,7 +5,7 @@ pub mod session;
 pub mod transport;
 pub mod worker;
 
-pub use discovery::{discover, DeviceIdentity, VALIDATED_VID, VALIDATED_PID};
+pub use discovery::{DeviceIdentity, VALIDATED_PID, VALIDATED_VID, discover};
 pub use session::{InvalidTransition, SessionEvent, SessionMachine, SessionState};
 pub use transport::{HidTransport, RealHidTransport, TransportError};
 pub use worker::{WorkerCommand, WorkerEvent, WorkerHandle};
@@ -23,7 +23,9 @@ pub enum DeviceError {
     #[error("descriptor mismatch for selected interface")]
     DescriptorMismatch,
 
-    #[error("permission denied opening hidraw — install data/udev/70-minikeyboard.rules via linux/setup-hid-permissions.sh")]
+    #[error(
+        "permission denied opening hidraw — install data/udev/70-minikeyboard.rules via linux/setup-hid-permissions.sh"
+    )]
     PermissionDenied,
 
     #[error("device busy or unavailable")]

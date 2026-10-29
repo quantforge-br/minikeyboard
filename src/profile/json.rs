@@ -6,8 +6,8 @@ use std::path::Path;
 
 use tempfile::NamedTempFile;
 
-use super::migration;
 use super::ProfileError;
+use super::migration;
 use crate::domain::action::Action;
 use crate::domain::config::{
     ConfigProvenance, DeviceConfig, LAYER_COUNT, MAX_POSITIONS, RECORD_SIZE, SCHEMA_VERSION,

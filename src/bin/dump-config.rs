@@ -15,7 +15,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut transport = RealHidTransport::new(hid);
 
     let variant = identify::identify(&mut transport)?;
-    eprintln!("variant: {} ({} keys + {} extras)", variant.geometry_id, variant.key_count, variant.extra_count);
+    eprintln!(
+        "variant: {} ({} keys + {} extras)",
+        variant.geometry_id, variant.key_count, variant.extra_count
+    );
     let identity = ProfileIdentity {
         vid: device.vid,
         pid: device.pid,

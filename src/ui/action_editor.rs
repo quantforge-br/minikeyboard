@@ -11,10 +11,10 @@ use gtk::{gio, glib};
 
 use super::shortcut_capture;
 use crate::app::{AppModel, SharedController};
-use crate::profile::bindings::{self, AppBinding};
 use crate::domain::action::{
     Action, ActionKind, ConsumerAction, KEY_CHOICES, Modifiers, MouseAction, Stroke,
 };
+use crate::profile::bindings::{self, AppBinding};
 use crate::protocol::codec::verified_action_kinds;
 
 pub struct ActionEditor {
@@ -68,9 +68,7 @@ impl ActionEditor {
             box_.set_margin_top(8);
             box_.set_margin_bottom(8);
             if !sensitive {
-                let hint = gtk::Label::new(Some(
-                    "Protocol mapping not verified for this action.",
-                ));
+                let hint = gtk::Label::new(Some("Protocol mapping not verified for this action."));
                 hint.add_css_class("action-category-help");
                 hint.set_wrap(true);
                 box_.append(&hint);
@@ -195,9 +193,7 @@ impl ActionEditor {
                     r_shift.set_active(mods.contains(Modifiers::SHIFT));
                     r_alt.set_active(mods.contains(Modifiers::ALT));
                     r_gui.set_active(mods.contains(Modifiers::GUI));
-                    if let Some(i) =
-                        KEY_CHOICES.iter().position(|k| k.usage == captured.usage)
-                    {
+                    if let Some(i) = KEY_CHOICES.iter().position(|k| k.usage == captured.usage) {
                         key_drop.set_selected(i as u32);
                     }
                     let action = Action::Keyboard {
@@ -217,7 +213,11 @@ impl ActionEditor {
         kb_box.append(&key_drop);
         kb_box.append(&mod_box);
         kb_box.append(&apply_kb);
-        categories.append(&make_row("Keyboard", ActionKind::Keyboard, kb_box.upcast_ref()));
+        categories.append(&make_row(
+            "Keyboard",
+            ActionKind::Keyboard,
+            kb_box.upcast_ref(),
+        ));
 
         // Macro (sequence) — up to 20 strokes per record.
         let macro_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
@@ -265,8 +265,12 @@ impl ActionEditor {
             let strokes = macro_strokes.clone();
             let list = macro_list.clone();
             let key_drop = macro_key_drop.clone();
-            let (ctrl, shift, alt, gui) =
-                (m_ctrl.clone(), m_shift.clone(), m_alt.clone(), m_gui.clone());
+            let (ctrl, shift, alt, gui) = (
+                m_ctrl.clone(),
+                m_shift.clone(),
+                m_alt.clone(),
+                m_gui.clone(),
+            );
             add_stroke.connect_clicked(move |_| {
                 if strokes.borrow().len() >= 20 {
                     list.set_text("Macro limit is 20 strokes.");
@@ -324,8 +328,7 @@ impl ActionEditor {
             "Records each pressed combination as a stroke (Esc ends)",
         ));
         {
-            let seq_recording: Rc<RefCell<Option<Arc<AtomicBool>>>> =
-                Rc::new(RefCell::new(None));
+            let seq_recording: Rc<RefCell<Option<Arc<AtomicBool>>>> = Rc::new(RefCell::new(None));
             let strokes = macro_strokes.clone();
             let list = macro_list.clone();
             seq_btn.connect_toggled(move |b| {
@@ -372,7 +375,11 @@ impl ActionEditor {
         macro_box.append(&macro_buttons);
         macro_box.append(&seq_btn);
         macro_box.append(&apply_macro);
-        categories.append(&make_row("Macro", ActionKind::Sequence, macro_box.upcast_ref()));
+        categories.append(&make_row(
+            "Macro",
+            ActionKind::Sequence,
+            macro_box.upcast_ref(),
+        ));
 
         // Applications & scripts: bind a shell command to a marker chord
         // (F13–F24 + modifiers) written to the key; minikeyboard-daemon
@@ -433,24 +440,19 @@ impl ActionEditor {
                     .selected_position_config()
                     .map(|p| p.action.clone());
                 if selected.is_none() {
-                    controller.borrow_mut().model.status =
-                        "Select a key before binding.".into();
+                    controller.borrow_mut().model.status = "Select a key before binding.".into();
                     return;
                 }
                 let mut list = bindings::load_bindings().unwrap_or_default();
                 // Reuse the key's current marker when re-binding, otherwise
                 // allocate a fresh chord.
                 let existing = match selected {
-                    Some(Action::Keyboard { modifiers, usage })
-                        if bindings::is_marker(usage) =>
-                    {
+                    Some(Action::Keyboard { modifiers, usage }) if bindings::is_marker(usage) => {
                         Some((usage, modifiers))
                     }
                     _ => None,
                 };
-                let Some((usage, mods)) =
-                    existing.or_else(|| bindings::alloc_marker(&list))
-                else {
+                let Some((usage, mods)) = existing.or_else(|| bindings::alloc_marker(&list)) else {
                     controller.borrow_mut().model.status =
                         "No free markers (limit of 192 bindings).".into();
                     return;
@@ -565,7 +567,11 @@ impl ActionEditor {
             });
             media_box.append(&btn);
         }
-        categories.append(&make_row("Media", ActionKind::Consumer, media_box.upcast_ref()));
+        categories.append(&make_row(
+            "Media",
+            ActionKind::Consumer,
+            media_box.upcast_ref(),
+        ));
 
         // Mouse
         let mouse_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
@@ -592,7 +598,11 @@ impl ActionEditor {
             });
             mouse_box.append(&btn);
         }
-        categories.append(&make_row("Mouse", ActionKind::Mouse, mouse_box.upcast_ref()));
+        categories.append(&make_row(
+            "Mouse",
+            ActionKind::Mouse,
+            mouse_box.upcast_ref(),
+        ));
 
         // Lighting
         let light_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
@@ -649,7 +659,11 @@ impl ActionEditor {
         }
         delay_box.append(&delay_spin);
         delay_box.append(&apply_delay);
-        categories.append(&make_row("Delay", ActionKind::Delay, delay_box.upcast_ref()));
+        categories.append(&make_row(
+            "Delay",
+            ActionKind::Delay,
+            delay_box.upcast_ref(),
+        ));
 
         // Clear
         let clear_btn = gtk::Button::with_label("Clear position");

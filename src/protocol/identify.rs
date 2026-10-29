@@ -1,9 +1,9 @@
 //! Device identify: send `03 FB FB FB`, parse variant tuple.
 
 use crate::device::transport::HidTransport;
-use crate::domain::geometry::{resolve_variant, DeviceVariant};
-use crate::protocol::frame::{identify_report, IDENTIFY_TIMEOUT, REPORT_ID};
+use crate::domain::geometry::{DeviceVariant, resolve_variant};
 use crate::protocol::ProtocolError;
+use crate::protocol::frame::{IDENTIFY_TIMEOUT, REPORT_ID, identify_report};
 
 /// Send one identify report, read once at 10 ms, map indices 2/3/4 to variant.
 pub fn identify(transport: &mut dyn HidTransport) -> Result<DeviceVariant, ProtocolError> {

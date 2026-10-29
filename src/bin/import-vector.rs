@@ -25,9 +25,7 @@ fn usage() {
 }
 
 fn arg_value(args: &[String], name: &str) -> Option<String> {
-    args.windows(2)
-        .find(|w| w[0] == name)
-        .map(|w| w[1].clone())
+    args.windows(2).find(|w| w[0] == name).map(|w| w[1].clone())
 }
 
 fn sha256_hex(data: &[u8]) -> String {
@@ -70,13 +68,16 @@ fn reject_unrelated_usb(
     }
 
     let (Some(want_b), Some(want_d)) = (bus, device) else {
-        eprintln!(
-            "error: source metadata includes bus/device — pass matching --bus and --device"
-        );
+        eprintln!("error: source metadata includes bus/device — pass matching --bus and --device");
         return Err(ExitCode::from(1));
     };
 
-    let mb = meta.get("bus").unwrap().to_string().trim_matches('"').to_string();
+    let mb = meta
+        .get("bus")
+        .unwrap()
+        .to_string()
+        .trim_matches('"')
+        .to_string();
     let md = meta
         .get("device")
         .unwrap()

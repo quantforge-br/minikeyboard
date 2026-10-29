@@ -10,7 +10,7 @@ use minikeyboard::domain::config::{
 };
 use minikeyboard::protocol::frame::{commit_report, identify_report, position_report};
 use minikeyboard::protocol::identify::identify;
-use minikeyboard::protocol::write_config::{write_dirty_records, WriteAuthorization};
+use minikeyboard::protocol::write_config::{WriteAuthorization, write_dirty_records};
 use minikeyboard::protocol::{ProtocolError, ReadCapability};
 
 fn sample_dirty_config() -> DeviceConfig {
@@ -75,7 +75,10 @@ fn identify_timeout() {
         MockStep::FailRead(TransportError::Timeout),
     ]);
     let err = identify(&mut t).unwrap_err();
-    assert!(matches!(err, ProtocolError::Transport(TransportError::Timeout)));
+    assert!(matches!(
+        err,
+        ProtocolError::Transport(TransportError::Timeout)
+    ));
 }
 
 #[test]

@@ -18,7 +18,6 @@ pub enum MockStep {
     FailDescriptor(TransportError),
 }
 
-
 pub struct MockTransport {
     steps: VecDeque<MockStep>,
     writes: Vec<[u8; REPORT_LEN]>,
@@ -90,9 +89,7 @@ impl HidTransport for MockTransport {
             MockStep::FailWrite(e) => Err(e),
             other => {
                 self.steps.push_front(other);
-                Err(TransportError::Io(
-                    "script expected non-write step".into(),
-                ))
+                Err(TransportError::Io("script expected non-write step".into()))
             }
         }
     }

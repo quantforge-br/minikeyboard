@@ -159,12 +159,15 @@ fn provisional_positions(key_count: u8, extra_count: u8) -> Vec<PositionGeometry
     // Knobs sit above the key grid, matching the physical device.
     let knob_rows: u8 = if extra_count > 0 { 1 } else { 0 };
 
-    let wire_extras =
-        key_count <= WIRE_BASE_POSITIONS && extra_count <= WIRE_EXTRA_GROUPS;
+    let wire_extras = key_count <= WIRE_BASE_POSITIONS && extra_count <= WIRE_EXTRA_GROUPS;
 
     // Span keys across the knob columns when they divide evenly so the two
     // blocks line up (k12-e2: 6 knob records over 3 key columns, span 2).
-    let knob_cols: u8 = if wire_extras { extra_count * 3 } else { extra_count };
+    let knob_cols: u8 = if wire_extras {
+        extra_count * 3
+    } else {
+        extra_count
+    };
     let key_span: u8 = if keys > 0 && knob_cols > columns && knob_cols.is_multiple_of(columns) {
         knob_cols / columns
     } else {
@@ -200,7 +203,11 @@ fn provisional_positions(key_count: u8, extra_count: u8) -> Vec<PositionGeometry
         }
     }
 
-    let key_rows = if keys == 0 { 0 } else { (keys as u8).div_ceil(columns) };
+    let key_rows = if keys == 0 {
+        0
+    } else {
+        (keys as u8).div_ceil(columns)
+    };
     for i in 0..keys {
         let idx = i as u8;
         // Wire-to-physical mapping. Hardware capture on k12-e2
@@ -312,9 +319,21 @@ mod tests {
         // Column-major bottom-up wiring, per hardware capture:
         // wire 0 = bottom-left (K10), wire 3 = top-left (K1),
         // wire 8 = bottom-right (K12), wire 11 = top-right (K3).
-        assert_eq!((keys[0].row, keys[0].column, keys[0].label.as_str()), (4, 0, "K10"));
-        assert_eq!((keys[3].row, keys[3].column, keys[3].label.as_str()), (1, 0, "K1"));
-        assert_eq!((keys[8].row, keys[8].column, keys[8].label.as_str()), (4, 4, "K12"));
-        assert_eq!((keys[11].row, keys[11].column, keys[11].label.as_str()), (1, 4, "K3"));
+        assert_eq!(
+            (keys[0].row, keys[0].column, keys[0].label.as_str()),
+            (4, 0, "K10")
+        );
+        assert_eq!(
+            (keys[3].row, keys[3].column, keys[3].label.as_str()),
+            (1, 0, "K1")
+        );
+        assert_eq!(
+            (keys[8].row, keys[8].column, keys[8].label.as_str()),
+            (4, 4, "K12")
+        );
+        assert_eq!(
+            (keys[11].row, keys[11].column, keys[11].label.as_str()),
+            (1, 4, "K3")
+        );
     }
 }

@@ -4,9 +4,7 @@ use std::collections::BTreeSet;
 
 use thiserror::Error;
 
-use crate::domain::action::{
-    Action, ActionKind, ConsumerAction, Modifiers, MouseAction, Stroke,
-};
+use crate::domain::action::{Action, ActionKind, ConsumerAction, Modifiers, MouseAction, Stroke};
 use crate::domain::config::RECORD_SIZE;
 
 const PAYLOAD_START: usize = 10;
@@ -314,11 +312,18 @@ mod tests {
     fn sequence_roundtrip() {
         let action = Action::Sequence {
             strokes: vec![
-                Stroke { modifiers: Modifiers::empty(), usage: 0x29 },
-                Stroke { modifiers: Modifiers::CTRL | Modifiers::SHIFT, usage: 0x19 },
+                Stroke {
+                    modifiers: Modifiers::empty(),
+                    usage: 0x29,
+                },
+                Stroke {
+                    modifiers: Modifiers::CTRL | Modifiers::SHIFT,
+                    usage: 0x19,
+                },
             ],
         };
-        let raw = encode_record(identity_record(1), &action, None, &verified_action_kinds()).unwrap();
+        let raw =
+            encode_record(identity_record(1), &action, None, &verified_action_kinds()).unwrap();
         assert_eq!(raw[9], 2);
         assert_eq!(decode_record(raw).action, action);
     }
@@ -336,7 +341,13 @@ mod tests {
             ConsumerAction::Calculator,
         ] {
             let semantic = Action::Consumer { action };
-            let raw = encode_record(identity_record(2), &semantic, None, &verified_action_kinds()).unwrap();
+            let raw = encode_record(
+                identity_record(2),
+                &semantic,
+                None,
+                &verified_action_kinds(),
+            )
+            .unwrap();
             assert_eq!(decode_record(raw).action, semantic);
         }
     }
@@ -356,7 +367,13 @@ mod tests {
                 Modifiers::empty()
             };
             let semantic = Action::Mouse { action, modifiers };
-            let raw = encode_record(identity_record(3), &semantic, None, &verified_action_kinds()).unwrap();
+            let raw = encode_record(
+                identity_record(3),
+                &semantic,
+                None,
+                &verified_action_kinds(),
+            )
+            .unwrap();
             assert_eq!(decode_record(raw).action, semantic);
         }
     }
@@ -364,7 +381,8 @@ mod tests {
     #[test]
     fn lighting_roundtrip() {
         let action = Action::Lighting { mode: 2, color: 3 };
-        let raw = encode_record(identity_record(5), &action, None, &verified_action_kinds()).unwrap();
+        let raw =
+            encode_record(identity_record(5), &action, None, &verified_action_kinds()).unwrap();
         assert_eq!(&raw[..3], &[0xFE, 0xB0, 2]);
         assert_eq!(decode_record(raw).action, action);
     }
