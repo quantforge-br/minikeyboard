@@ -69,7 +69,7 @@ pub fn grab(file: &File) {
 
 /// Iterate `(type, code, value)` triples over a raw evdev read buffer.
 pub fn parse_events(buf: &[u8]) -> impl Iterator<Item = (u16, u16, i32)> + '_ {
-    buf.chunks_exact(EVENT_SIZE).map(|ev| {
+    buf.as_chunks::<EVENT_SIZE>().0.iter().map(|ev| {
         (
             u16::from_ne_bytes([ev[16], ev[17]]),
             u16::from_ne_bytes([ev[18], ev[19]]),
